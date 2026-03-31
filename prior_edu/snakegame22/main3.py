@@ -1,0 +1,377 @@
+import sys
+
+import pygame
+import random
+import time
+
+from snake_drawing import *
+from direction_class import *
+from snake_class import *
+from enemy_snake_class import *
+from food_class import *
+from gameover_drawing import *
+
+
+# Frame 수 조절(초당 그려지는 수)
+# Framerate per seconds
+fps = 60
+
+# 창의 크기
+# Window size
+frame = (1080, 720)
+
+# 시간을 흐르게 하기 위한 FPS counter
+# FPS (frames per second) controller
+fps_controller = pygame.time.Clock()
+
+#%%
+# Game 관련 변수들
+# Game variables
+
+score_1: int = 0
+score_2: int = 0
+
+# %%
+def Init(size):
+    # 초기화 후 error가 일어났는지 알아봅니다.
+    # Checks for errors encountered
+    check_errors = pygame.init()
+
+    # pygame.init() example output -> (6, 0)
+    # 두번째 항목이 error의 수를 알려줍니다.
+    # second number in tuple gives number of errors
+    if check_errors[1] > 0:
+        print(
+            f'[!] Had {check_errors[1]} errors when initialising game, exiting...')
+        sys.exit(-1)
+    else:
+        print('[+] Game successfully initialised')
+
+    # pygame.display를 통해 제목, window size를 설정하고 초기화합니다.
+    # Initialise game window using pygame.display
+    pygame.display.set_caption('Snake Example with PyGame')
+    game_window = pygame.display.set_mode(size)
+    return game_window
+
+
+
+def frame_controller(snake_frame_dx: int = 0, snake_frame_dy: int = 0):
+    global snake_frame_offset, snake_frame_size
+
+    snake_frame_size = (snake_frame_size[0]+snake_frame_dx, snake_frame_size[1]+snake_frame_dy)
+
+    
+    Snake.move_frame(snake_frame_dx, snake_frame_dy)
+    Food.move_frame(snake_frame_dx, snake_frame_dy)
+
+def offset_controller(offset_dx: int = 0, offset_dy: int = 0, move_snakes: bool = True):
+    global snake_frame_offset, snake_frame_size
+
+    snake_frame_offset = (snake_frame_offset[0]+offset_dx, snake_frame_offset[1]+offset_dy)
+
+    Snake.move_offset(offset_dx, offset_dy, move_snakes)
+    Food.move_offset(offset_dx, offset_dy, move_snakes)
+
+
+def screen_resize_anim(*delta: int):
+    delta = list(delta)
+    delta[2] += delta[0]
+    delta[3] += delta[1]
+    resize_queue = []
+    is_needed_to_draw_warning = snake_frame_size == (800, 600)
+    offset_destination = (snake_frame_offset[0]+delta[0], snake_frame_offset[1]+delta[1])
+
+    for idx, motion in enumerate(delta):
+        resize_queue.extend([(idx, SNAKE_size if motion>0 else -SNAKE_size)]*(abs(motion) // SNAKE_size))
+    resize_queue.sort(key=lambda _: random.random())
+
+    def move(i, movement):
+        if i==0:
+            frame_controller(-movement, 0)
+            offset_controller(movement, 0, False)
+        elif i==1:
+            frame_controller(0, -movement)
+            offset_controller(0, movement, False)
+        elif i==2:
+            frame_controller(movement, 0)
+        elif i==3:
+            frame_controller(0, movement)
+    #print(delta, screen_resize_preview, len(resize_queue))
+    for idx, motion in resize_queue:
+        
+        draw_background(main_window, frame, snake_frame_size, snake_frame_offset)
+        if is_needed_to_draw_warning:
+            pygame.draw.rect(main_window, pygame.Color(128, 0, 0), pygame.Rect(*snake_frame_offset, *snake_frame_size))
+            pygame.draw.rect(main_window, pygame.Color(0, 0, 0), pygame.Rect(*offset_destination, *screen_resize_preview))
+        
+        
+        
+        Food.draw()
+        player_snake_1.draw(moving=False)
+        player_snake_2.draw(moving=False)
+
+        pygame.display.update()
+        
+        move(idx, motion)
+
+        if not is_needed_to_draw_warning:
+            Food.spawn_food_exclusive(lambda pos:
+            snake_frame_offset[0] + SNAKE_size <= pos[0] and snake_frame_offset[1] + SNAKE_size <= pos[1] and
+            pos[0] < snake_frame_offset[0] + snake_frame_size[0] - SNAKE_size and
+            pos[1] < snake_frame_offset[1] + snake_frame_size[1] - SNAKE_size
+            , random.randint(20, 40) - Food.howmany_food)
+
+        fps_controller.tick(fps)
+
+
+
+
+# %%
+# Game Over
+def game_over(window, size):
+    # 'Game Over'문구를 띄우기 위한 설정입니다.
+    # Settings of the 'Game Over' string to show on the screen
+    
+    draw_gameover(window, size)
+
+    # 'draw_score' 함수를 부릅니다.
+    # Call 'draw_score' function.
+    scoreboard = [('player1', score_1), ('player2', score_2)]
+    if player_snake_1.snake_list[0].is_dead:
+        scoreboard.pop(0)
+    if player_snake_2.snake_list[0].is_dead:
+        scoreboard.pop(1)
+    draw_scoreboard(window, size, 0, scoreboard)
+
+    # 그려진 화면을 실제로 띄워줍니다.
+    # Show drawn windows to screen
+    pygame.display.flip()
+
+    # 3초 기다린 후 게임을 종료합니다.
+    # exit program after 3 seconds.
+    time.sleep(3)
+    pygame.quit()
+    sys.exit()
+
+def frame_delay_generator(n) -> Generator[bool]:
+    for _ in range(n):
+        yield False
+    yield True
+
+
+# #### 2. 메인 프로그램
+# Game이 동작하기 위한 메인 코드 입니다.
+#
+# This is main code of the game.
+class player_snake_1(Snake):
+    key_map = 'arrow'
+
+class player_snake_2(Snake):
+    key_map = 'asdf'
+
+player_snake_2.__name__ = "enemy_snake"
+
+
+
+# %%
+# 초기화합니다.
+# Initialize
+main_window = Init(frame)
+
+snake_frame_size = (800, 600)
+snake_frame_offset = (90, 10)
+offset_dy = -2
+offset_dx = -3
+frame_motion = 0
+
+screen_move: bool = True
+
+screen_resize_delay = frame_delay_generator(random.randint(20, 40))
+
+move_snake = Snake.snake_animation_delay()
+
+Food.initialize_Food(main_window, snake_frame_size, snake_frame_offset)
+Snake.initialize_snake(main_window, snake_frame_size, snake_frame_offset)
+
+player_snake_1.add_first_snake(SNAKE_size*5, SNAKE_size*5, Direction.RIGHT)
+for _ in range(5):
+    player_snake_1.add(Direction.RIGHT)
+
+player_snake_2.add_first_snake(800-SNAKE_size*5, 600-SNAKE_size*10, Direction.LEFT)
+for _ in range(5):
+    player_snake_2.add(Direction.LEFT)
+
+Food.spawn_food_random(random.randint(15, 25))
+
+while True:
+    # 게임에서 event를 받아옵니다.
+    # Get event from user
+    for event in pygame.event.get():
+        # 종료시 실제로 프로그램을 종료합니다.
+        # Close program if QUIT event occured
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.KEYDOWN:
+            # esc 키를 눌렀을떄 종료 신호를 보냅니다.
+            # Create quit event when 'esc' key pressed
+            if event.key == pygame.K_ESCAPE:
+                pygame.event.post(pygame.event.Event(pygame.QUIT))
+            else:
+                # 입력 키로 방향을 얻어냅니다.
+                # Get direction with key
+                #player_direction = get_keyboard(event.key, player_direction)
+                player_snake_1.get_keyboard(event.key)
+                player_snake_2.get_keyboard(event.key)
+    
+    if screen_move:
+        if offset_dy < 0:
+            if snake_frame_offset[1] <= 0:
+                offset_dy *= -1
+        else:
+            if snake_frame_offset[1] + snake_frame_size[1] >= frame[1]:
+                offset_dy *= -1
+        if offset_dx < 0:
+            if snake_frame_offset[0] <= 0:
+                offset_dx *= -1
+        else:
+            if snake_frame_offset[0] + snake_frame_size[0] >= frame[0]:
+                offset_dx *= -1
+        offset_controller(offset_dx, offset_dy)
+
+
+
+
+    if next(move_snake):
+        
+        # 실제로 뱀의 위치를 옮깁니다.
+        # Move the actual snake position
+        player_snake_1.add()
+        player_snake_2.add()
+
+        #player_snake.print_snakes()
+        snake_pos_1 = player_snake_1.head_pos()
+        snake_pos_2 = player_snake_2.head_pos()
+        # 우선 증가시키고 음식의 위치가 아니라면 마지막을 뺍니다.
+        # Grow snake first, check if food is on sanke head(if not, delete last)
+        if Food.eat_food(snake_pos_1):
+            score_1 += 1
+        else:
+            player_snake_1.pop()
+        
+        if Food.eat_food(snake_pos_2):
+            score_2 += 1
+        else:
+            player_snake_2.pop()
+
+        # 음식이 없다면 음식을 랜덤한 위치에 생성합니다.
+        # Spawning food on the screen with random position
+        if not Food.is_food_spawned():
+            Food.spawn_food_random(random.randint(20, 40))
+        
+
+        if screen_move:
+            if snake_frame_size == (800, 600):
+                if next(screen_resize_delay):
+                    screen_move = False
+                    screen_resize_delay = frame_delay_generator(45)
+
+                    screen_resize_x = random.randint(400//SNAKE_size - 5, 400//SNAKE_size + 5) * SNAKE_size
+                    screen_resize_y = random.randint(300//SNAKE_size, 300//SNAKE_size + 5) * SNAKE_size
+                    if screen_resize_x<400 and screen_resize_y<400:
+                        snake_size_moving = True
+                    screen_resize_preview = (screen_resize_x, screen_resize_y)
+                    screen_resize_offset_d = (random.randint(0, (800-screen_resize_x)//SNAKE_size) * SNAKE_size, 
+                                            random.randint(0, (600-screen_resize_y)//SNAKE_size) * SNAKE_size)
+            else:
+                if next(screen_resize_delay):
+                    screen_move = False
+                    screen_resize_delay = frame_delay_generator(0)
+        else:
+            if next(screen_resize_delay):
+                
+                screen_move = True
+                if snake_frame_size == (800, 600):
+                    screen_resize_delay = frame_delay_generator(random.randint(45, 120))
+                    # 줄어들기
+                    screen_resize_anim(*screen_resize_offset_d, screen_resize_x-800, screen_resize_y-600)
+                elif True or not snake_size_moving:
+                    screen_resize_delay = frame_delay_generator(random.randint(45, 120))
+                    # 늘어나기
+                    screen_resize_offset_preview = [
+                        snake_frame_offset[0]%SNAKE_size + 
+                        random.randrange(max(0, snake_frame_offset[0]+snake_frame_size[0]-800-snake_frame_offset[0]%SNAKE_size), 
+                                        min(snake_frame_offset[0]-snake_frame_offset[0]%SNAKE_size + 1, 280), SNAKE_size), 
+                        snake_frame_offset[1]%SNAKE_size + 
+                        random.randrange(max(0, snake_frame_offset[1]+snake_frame_size[1]-600-snake_frame_offset[1]%SNAKE_size), 
+                                        min(snake_frame_offset[1]-snake_frame_offset[1]%SNAKE_size + 1, 120), SNAKE_size)
+                        ]
+
+                    screen_resize_anim(screen_resize_offset_preview[0] - snake_frame_offset[0], 
+                                    screen_resize_offset_preview[1] - snake_frame_offset[1], 
+                                    800 - screen_resize_x, 600 - screen_resize_y)
+                    #Food.spawn_food_random(random.randint(20, 40) - Food.howmany_food)
+                else:
+                    pass
+                    
+
+
+            
+
+            
+
+    # 우선 게임을 검은 색으로 채우고 뱀의 각 위치마다 그림을 그립니다.
+    # Fill the screen black and draw each position of snake
+    draw_background(main_window, frame, snake_frame_size, snake_frame_offset)
+
+    # screen이 resize 예정인 경우 붉은색 영역을 표시
+    if not screen_move:
+        if snake_frame_size == (800, 600):
+            pygame.draw.rect(main_window, pygame.Color(128, 0, 0), pygame.Rect(*snake_frame_offset, *snake_frame_size))
+            pygame.draw.rect(main_window, pygame.Color(0, 0, 0), pygame.Rect(
+                snake_frame_offset[0]+screen_resize_offset_d[0], snake_frame_offset[1]+screen_resize_offset_d[1],
+                *screen_resize_preview))
+        else:
+            pass
+        
+
+
+    # 점수를 띄워줍니다.
+    # Show score with defined function
+    scoreboard = [('player1', score_1), ('player2', score_2)]
+    draw_scoreboard(main_window, frame, 1, scoreboard)
+
+    # 음식을 그립니다.
+    # Draw snake food
+    Food.draw()
+
+    player_snake_1.draw()
+    player_snake_2.draw()
+
+
+    # Game Over 상태를 확인합니다.
+    # Check Game Over conditions
+
+
+    # 바깥 벽 처리를 합니다.
+    # Check if the snake hit the wall
+    # 뱀의 몸에 닿았는지 확인합니다.
+    # Check if the snake is hit itself
+    if player_snake_1.is_hit_wall() or player_snake_1.is_hit_itself():
+        player_snake_1.game_over()
+        game_over(main_window, frame)
+
+    if player_snake_2.is_hit_wall() or player_snake_2.is_hit_itself():
+        player_snake_2.game_over()
+        game_over(main_window, frame)
+
+    
+
+    # 실제 화면에 보이도록 업데이트 해줍니다.
+    # Refresh game screen
+    pygame.display.update()
+
+    # 해당 FPS만큼 대기합니다.
+    # Refresh rate
+    fps_controller.tick(fps)
+
