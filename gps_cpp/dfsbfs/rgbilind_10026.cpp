@@ -31,7 +31,7 @@ std::vector<std::pair<int, int>> get_adjacent(std::pair<int, int> pos) {
     return adjacents;
 }
 
-void push_valid_normal(std::deque<std::pair<int, int>>& queue, std::pair<int, int> pos) {
+void push_valid(std::deque<std::pair<int, int>>& queue, std::pair<int, int> pos) {
     auto temp = get_adjacent(pos);
     for (const auto& where : temp) {
         if (canvas[where.first][where.second] == canvas[pos.first][pos.second]){
@@ -85,14 +85,14 @@ int main() {
 
             count ++;
                 
-            push_valid_normal(queue, {i, j});
+            push_valid(queue, {i, j});
 
             while (!queue.empty())
             {
                 auto v = queue.front();
                 queue.pop_front();
 
-                push_valid_normal(queue, v);
+                push_valid(queue, v);
             }
             
         }

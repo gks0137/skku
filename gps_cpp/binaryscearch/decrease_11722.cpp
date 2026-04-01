@@ -8,12 +8,18 @@ int main() {
 
     int n;
     std::cin >> n;
+    std::vector<int> sequence(n);
+    for (int i = 0; i < n; ++i) {
+        int num;
+        std::cin >> num;
+        sequence[i] = num;
+    }
 
     std::vector<int> LIS;
     
     for (int i = 0; i < n; ++i) {
         int num;
-        std::cin >> num;
+        num = sequence[n-1-i];
         
 
         if (LIS.empty() || LIS.back() < num) {
