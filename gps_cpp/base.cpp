@@ -1,7 +1,5 @@
 #include <iostream>
-#include <deque>
 #include <vector>
-#include <algorithm>
 
 int main() {
     std::ios::sync_with_stdio(false);
@@ -11,7 +9,7 @@ int main() {
     int n;
     std::cin >> n;
 
-
+    
 
     return 0;
 }
