@@ -6,8 +6,10 @@ int main() {
     std::cin.tie(NULL);
     std::cout.tie(NULL);
 
+
     int n;
     std::cin >> n;
+    
 
     
 
