@@ -8,7 +8,10 @@ int main() {
     std::cout.tie(NULL);
 
 
-    std::cout << (3 & 2);
+    int n;
+    std::cin >> n;
+    
+    std::cout << n/5;
 
     
 
