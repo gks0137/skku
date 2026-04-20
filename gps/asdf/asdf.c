@@ -1,11 +1,14 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
 
 
 int main() {
-    int a = 0;
-    int b = 10;
-    
-    printf("%d", b/a);
+
+    srand(time(NULL));
+    int a = rand() % 100;
+    printf("Random number: %d\n", a);
 
     return 0;
 }
