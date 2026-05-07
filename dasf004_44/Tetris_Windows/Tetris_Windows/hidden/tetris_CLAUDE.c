@@ -37,7 +37,7 @@ const int tetromino[7][4][4] = {
 
 // Bag system for random piece generation
 int bag[7] = {0, 1, 2, 3, 4, 5, 6};
-int bag_index = 0;
+int bag_index = 7;
 
 // Game board (0 = empty, 1-7 = filled with piece type)
 int board[BOARD_HEIGHT][BOARD_WIDTH] = {0};
@@ -70,15 +70,14 @@ typedef struct {
     int fall_timer;
     int fall_speed;
     bool game_over;
+    int hold_piece; // -1 if no piece in hold
 } GameState;
 
 // next piece queue (for preview)
 int next_piece_queue[5] = {0};
 
-// holding piece
-int hold_piece = -1;
-
 // Function prototypes
+void initGame(GameState* state);
 bool canPlace(Piece p);
 void placePiece(Piece p);
 void spawnNewPiece(GameState* state);
@@ -92,6 +91,31 @@ void shuffleBag(void);
 int getNextPiece(void);
 void swapHoldPiece(GameState* state);
 
+// Initialize game state
+void initGame(GameState* state) {
+    state->score = 0;
+    state->lines = 0;
+    state->fall_timer = 0;
+    state->fall_speed = 30; // Initial fall speed (frames)
+    state->game_over = false;
+    state->hold_piece = -1; // No piece in hold
+    
+    // Initialize bag and next piece queue
+    bag_index = 7; // Force shuffle on first getNextPiece
+    for (int i = 0; i < 5; i++) {
+        next_piece_queue[i] = getNextPiece();
+    }
+
+    // clear board
+    for (int row = 0; row < BOARD_HEIGHT; row++) {
+        for (int col = 0; col < BOARD_WIDTH; col++) {
+            board[row][col] = 0;
+        }
+    }
+
+    // Spawn first piece
+    spawnNewPiece(state);
+}
 
 // Check if piece can be placed at current position
 bool canPlace(Piece p) {
@@ -190,9 +214,15 @@ int clearLines(void) {
 void rotatePieceC(Piece* p) {
     Piece temp = *p;
     temp.rotation = (temp.rotation + 1) % 4;
-    for (int row = 0; row < 4; row++) {
-        for (int col = 0; col < 4; col++) {
-            temp.blocks[col][3 - row] = p->blocks[row][col];
+    int rotate_rad = 4;
+    if (p->type == 1) {
+        return;
+    } else if (p->type > 1) {
+        rotate_rad = 3;
+    }
+    for (int row = 0; row < rotate_rad; row++) {
+        for (int col = 0; col < rotate_rad; col++) {
+            temp.blocks[col][rotate_rad - 1 - row] = p->blocks[row][col];
         }
     }
     
@@ -204,12 +234,19 @@ void rotatePieceC(Piece* p) {
     }
 }
 
+// Rotate piece 90 degrees counterclockwise
 void rotatePieceCC(Piece* p) {
     Piece temp = *p;
     temp.rotation = (temp.rotation + 3) % 4; // Rotate left
-    for (int row = 0; row < 4; row++) {
-        for (int col = 0; col < 4; col++) {
-            temp.blocks[3 - col][row] = p->blocks[row][col];
+    int rotate_rad = 4;
+    if (p->type == 1) {
+        return;
+    } else if (p->type > 1) {
+        rotate_rad = 3;
+    }
+    for (int row = 0; row < rotate_rad; row++) {
+        for (int col = 0; col < rotate_rad; col++) {
+            temp.blocks[rotate_rad - 1 - col][row] = p->blocks[row][col];
         }
     }
     
@@ -296,12 +333,12 @@ int getNextPiece(void) {
 
 // Swap current piece with hold piece (or hold current piece if hold is empty)
 void swapHoldPiece(GameState* state) {
-    if (hold_piece == -1) {
-        hold_piece = state->current.type;
+    if (state->hold_piece == -1) {
+        state->hold_piece = state->current.type;
         spawnNewPiece(state);
     } else {
-        int temp = hold_piece;
-        hold_piece = state->current.type;
+        int temp = state->hold_piece;
+        state->hold_piece = state->current.type;
         state->current.type = temp;
         
         // Update current piece blocks
@@ -350,14 +387,7 @@ int main(int argc, char* args[]) {
     }
 
     GameState state = {0};
-    state.fall_speed = 30; // Frames before piece falls
-    state.fall_timer = 0;
-
-    for (int i = 0; i < 5; i++) {
-        next_piece_queue[i] = getNextPiece();
-    }
-    
-    spawnNewPiece(&state);
+    initGame(&state);
 
     bool quit = false; 
     SDL_Event e;
@@ -403,6 +433,9 @@ int main(int argc, char* args[]) {
                     case SDLK_LSHIFT:
                     case SDLK_RSHIFT:
                         swapHoldPiece(&state);
+                        break;
+                    case SDLK_r:
+                        initGame(&state);
                         break;
                 }
             }
@@ -461,9 +494,9 @@ int main(int argc, char* args[]) {
         }
         
         // Draw hold piece
-        if (hold_piece != -1) {
+        if (state.hold_piece != -1) {
             Piece hold_preview;
-            hold_preview.type = hold_piece;
+            hold_preview.type = state.hold_piece;
             hold_preview.x = -5; // Preview area to the left of board
             hold_preview.y = 0; // Top of preview area
             hold_preview.rotation = 0;
@@ -473,6 +506,15 @@ int main(int argc, char* args[]) {
                 }
             }
             drawPiece(renderer, hold_preview);
+        }
+
+        
+
+        // Update window title to show score and lines
+        {
+            char title[128];
+            snprintf(title, sizeof(title), "Tetris - Score: %d  Lines: %d", state.score, state.lines);
+            SDL_SetWindowTitle(window, title);
         }
 
         SDL_RenderPresent(renderer);
