@@ -35,10 +35,6 @@ const int tetromino[7][4][4] = {
     {{0,0,7,0},{7,7,7,0},{0,0,0,0},{0,0,0,0}}
 };
 
-// Bag system for random piece generation
-int bag[7] = {0, 1, 2, 3, 4, 5, 6};
-int bag_index = 7;
-
 // Game board (0 = empty, 1-7 = filled with piece type)
 int board[BOARD_HEIGHT][BOARD_WIDTH] = {0};
 
@@ -56,6 +52,10 @@ SDL_Color colors[8] = {
 };
 
 
+// SDL variables
+SDL_Window* window = NULL;
+SDL_Renderer* renderer = NULL;
+
 typedef struct {
     int type;       // 0-6 for piece type
     int x, y;       // Top-left position on board
@@ -70,41 +70,62 @@ typedef struct {
     int fall_timer;
     int fall_speed;
     bool game_over;
+    int next_piece_queue[5]; // Queue of next pieces (5 pieces)
     int hold_piece; // -1 if no piece in hold
+    bool hold_used; // To prevent multiple holds in one turn
 } GameState;
 
-// next piece queue (for preview)
-int next_piece_queue[5] = {0};
+GameState game = {0};
+GameState* state = &game;
 
 // Function prototypes
-void initGame(GameState* state);
-bool canPlace(Piece p);
-void placePiece(Piece p);
-void spawnNewPiece(GameState* state);
+void initSDL();
+void initGame();
+bool canPlace(Piece* p);
+void placePiece(Piece* p);
+void spawnNewPiece(int piece_type);
 int clearLines(void);
 void rotatePieceC(Piece* p);
 void rotatePieceCC(Piece* p);
-void drawBoard(SDL_Renderer* renderer);
-void drawPiece(SDL_Renderer* renderer, Piece p);
-void hardDropPiece(GameState* state);
-void shuffleBag(void); 
-int getNextPiece(void);
-void swapHoldPiece(GameState* state);
+void drawBoard();
+void drawPiece(Piece* p);
+void hardDropPiece();
+int getNextPiece();
+void swapHoldPiece();
+
+// Initialize SDL and create window/renderer
+void initSDL() {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+        exit(1);
+    }
+
+    window = SDL_CreateWindow("Tetris", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    if (window == NULL) {
+        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        SDL_Quit();
+        exit(1);
+    }
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (renderer == NULL) {
+        printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        exit(1);
+    }
+}
 
 // Initialize game state
-void initGame(GameState* state) {
+void initGame() {
     state->score = 0;
     state->lines = 0;
     state->fall_timer = 0;
     state->fall_speed = 30; // Initial fall speed (frames)
     state->game_over = false;
     state->hold_piece = -1; // No piece in hold
-    
-    // Initialize bag and next piece queue
-    bag_index = 7; // Force shuffle on first getNextPiece
-    for (int i = 0; i < 5; i++) {
-        next_piece_queue[i] = getNextPiece();
-    }
+    state->next_piece_queue[0] = -1; // Force queue initialization
+    state->hold_used = false; // Reset hold usage
 
     // clear board
     for (int row = 0; row < BOARD_HEIGHT; row++) {
@@ -113,17 +134,19 @@ void initGame(GameState* state) {
         }
     }
 
+    srand((unsigned int)time(NULL)); // Seed random number generator
+
     // Spawn first piece
-    spawnNewPiece(state);
+    spawnNewPiece(getNextPiece());
 }
 
 // Check if piece can be placed at current position
-bool canPlace(Piece p) {
+bool canPlace(Piece* p) {
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 4; col++) {
-            if (p.blocks[row][col] != 0) {
-                int bx = p.x + col;
-                int by = p.y + row;
+            if (p->blocks[row][col] != 0) {
+                int bx = p->x + col;
+                int by = p->y + row;
                 
                 // Check bounds
                 if (bx < 0 || bx >= BOARD_WIDTH || by >= BOARD_HEIGHT) {
@@ -141,39 +164,36 @@ bool canPlace(Piece p) {
 }
 
 // Place piece permanently on board
-void placePiece(Piece p) {
+void placePiece(Piece* p) {
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 4; col++) {
-            if (p.blocks[row][col] != 0) {
-                int bx = p.x + col;
-                int by = p.y + row;
+            if (p->blocks[row][col] != 0) {
+                int bx = p->x + col;
+                int by = p->y + row;
                 
                 if (by >= 0 && by < BOARD_HEIGHT && bx >= 0 && bx < BOARD_WIDTH) {
-                    board[by][bx] = p.blocks[row][col];
+                    board[by][bx] = p->blocks[row][col];
                 }
             }
         }
     }
 }
 
-// Spawn new piece at top
-void spawnNewPiece(GameState* state) {
-    state->current.type = next_piece_queue[0];
-    // Shift queue
-    for (int i = 0; i < 4; i++) {
-        next_piece_queue[i] = next_piece_queue[i + 1];
-    }
-    next_piece_queue[4] = getNextPiece();
+// Spawn given new piece at top
+void spawnNewPiece(int piece_type) {
+    state->current.type = piece_type;
     state->current.x = 3;
     state->current.y = 0;
     state->current.rotation = 0;
+    state->hold_used = false; // Reset hold usage for new piece
+
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 4; col++) {
             state->current.blocks[row][col] = tetromino[state->current.type][row][col];
         }
     }
     
-    if (!canPlace(state->current)) {
+    if (!canPlace(&state->current)) {
         state->game_over = true;
     }
 }
@@ -227,7 +247,7 @@ void rotatePieceC(Piece* p) {
     }
     
     // Try rotation
-    if (!canPlace(temp)) {
+    if (!canPlace(&temp)) {
         // Do nothing, keep original piece
     } else {
         *p = temp;
@@ -251,7 +271,7 @@ void rotatePieceCC(Piece* p) {
     }
     
     // Try rotation
-    if (!canPlace(temp)) {
+    if (!canPlace(&temp)) {
         // Do nothing, keep original piece
     } else {
         *p = temp;
@@ -259,7 +279,7 @@ void rotatePieceCC(Piece* p) {
 }
 
 // Draw the game board
-void drawBoard(SDL_Renderer* renderer) {
+void drawBoard() {
     for (int row = 0; row < BOARD_HEIGHT; row++) {
         for (int col = 0; col < BOARD_WIDTH; col++) {
             SDL_Rect rect = {
@@ -281,16 +301,16 @@ void drawBoard(SDL_Renderer* renderer) {
 }
 
 // Draw current falling piece
-void drawPiece(SDL_Renderer* renderer, Piece p) {
+void drawPiece(Piece* p) {
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 4; col++) {
-            if (p.blocks[row][col] != 0) {
-                int x = (p.x + col) * CELL_SIZE;
-                int y = (p.y + row) * CELL_SIZE;
+            if (p->blocks[row][col] != 0) {
+                int x = (p->x + col) * CELL_SIZE;
+                int y = (p->y + row) * CELL_SIZE;
                 
                 SDL_Rect rect = {x + BOARD_OFFSET_X, y + BOARD_OFFSET_Y, CELL_SIZE - 1, CELL_SIZE - 1};
                 
-                int color_idx = p.blocks[row][col];
+                int color_idx = p->blocks[row][col];
                 SDL_SetRenderDrawColor(renderer, colors[color_idx].r, colors[color_idx].g, colors[color_idx].b, colors[color_idx].a);
                 SDL_RenderFillRect(renderer, &rect);
                 
@@ -302,92 +322,70 @@ void drawPiece(SDL_Renderer* renderer, Piece p) {
 }
 
 // Hard drop piece to the lowest valid position
-void hardDropPiece(GameState* state) {
+void hardDropPiece() {
     while (true) {
         state->current.y++;
-        if (!canPlace(state->current)) {
+        if (!canPlace(&state->current)) {
             state->current.y--;
             break;
         }
     }
 }
 
-// Shuffle the bag of pieces
-void shuffleBag(void) {
-    for (int i = 6; i > 0; i--) {
-        int j = rand() % (i + 1);
-        int temp = bag[i];
-        bag[i] = bag[j];
-        bag[j] = temp;
-    }
-}
-
 // Get next piece from bag
-int getNextPiece(void) {
+int getNextPiece() {
+    
+    static int bag[7] = {0, 1, 2, 3, 4, 5, 6};
+    static int bag_index = 7; // Force shuffle on first call
+
     if (bag_index >= 7) {
-        shuffleBag();
+        // Shuffle bag
+        for (int i = 6; i > 0; i--) {
+            int j = rand() % (i + 1);
+            int temp = bag[i];
+            bag[i] = bag[j];
+            bag[j] = temp;
+        }
         bag_index = 0;
     }
-    return bag[bag_index++];
+
+    if (state->next_piece_queue[0] == -1) {
+        for (int i = 0; i < 5; i++) {
+            state->next_piece_queue[i] = bag[bag_index++];
+        }
+    }
+
+    int next_piece = state->next_piece_queue[0];
+
+    for (int i = 0; i < 4; i++) {
+        state->next_piece_queue[i] = state->next_piece_queue[i + 1];
+    }
+    state->next_piece_queue[4] = bag[bag_index++];
+
+    return next_piece;
 }
 
 // Swap current piece with hold piece (or hold current piece if hold is empty)
-void swapHoldPiece(GameState* state) {
+void swapHoldPiece() {
+    if (state->hold_used) {
+        return; // Prevent multiple holds in one turn
+    }
+    
     if (state->hold_piece == -1) {
         state->hold_piece = state->current.type;
-        spawnNewPiece(state);
+        spawnNewPiece(getNextPiece());
     } else {
-        int temp = state->hold_piece;
+        int swapped_piece = state->hold_piece;
         state->hold_piece = state->current.type;
-        state->current.type = temp;
-        
-        // Update current piece blocks
-        for (int row = 0; row < 4; row++) {
-            for (int col = 0; col < 4; col++) {
-                state->current.blocks[row][col] = tetromino[state->current.type][row][col];
-            }
-        }
-        
-        // Reset position and rotation
-        state->current.x = 3;
-        state->current.y = 0;
-        state->current.rotation = 0;
-        
-        if (!canPlace(state->current)) {
-            state->game_over = true;
-        }
+        spawnNewPiece(swapped_piece);
     }
+    state->hold_used = true; // Mark hold as used for this turn
 }
 
 
 int main(int argc, char* args[]) {
-    srand(time(NULL));
-    
-    SDL_Window* window = NULL;
-    SDL_Renderer* renderer = NULL;
-
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    window = SDL_CreateWindow("Tetris", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    if (window == NULL) {
-        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (renderer == NULL) {
-        printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    GameState state = {0};
-    initGame(&state);
+    initSDL();
+    initGame();
 
     bool quit = false; 
     SDL_Event e;
@@ -396,7 +394,7 @@ int main(int argc, char* args[]) {
     printf("Tetris Game!\n");
     printf("Arrow Keys: Move, Space: Rotate, ESC: Quit\n");
 
-    while (!quit && !state.game_over) {
+    while (!quit && !state->game_over) {
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
                 quit = true;
@@ -407,35 +405,35 @@ int main(int argc, char* args[]) {
                         quit = true;
                         break;
                     case SDLK_SPACE:
-                        hardDropPiece(&state);
-                        state.fall_timer = state.fall_speed; // Force piece to lock immediately
+                        hardDropPiece();
+                        state->fall_timer = state->fall_speed; // Force piece to lock immediately
                         break;
                     case SDLK_UP:
                     case SDLK_x:
-                        rotatePieceC(&state.current);
+                        rotatePieceC(&state->current);
                         break;
                     case SDLK_z:
-                        rotatePieceCC(&state.current);
+                        rotatePieceCC(&state->current);
                         break;
                     case SDLK_LEFT:
-                        state.current.x--;
-                        if (!canPlace(state.current)) {
-                            state.current.x++;
+                        state->current.x--;
+                        if (!canPlace(&state->current)) {
+                            state->current.x++;
                         }
                         break;
                     case SDLK_RIGHT:
-                        state.current.x++;
-                        if (!canPlace(state.current)) {
-                            state.current.x--;
+                        state->current.x++;
+                        if (!canPlace(&state->current)) {
+                            state->current.x--;
                         }
                         break;
                     case SDLK_c:
                     case SDLK_LSHIFT:
                     case SDLK_RSHIFT:
-                        swapHoldPiece(&state);
+                        swapHoldPiece();
                         break;
                     case SDLK_r:
-                        initGame(&state);
+                        initGame();
                         break;
                 }
             }
@@ -445,29 +443,29 @@ int main(int argc, char* args[]) {
         
         // Move down faster
         if (keystate[SDL_SCANCODE_DOWN]) {
-            state.fall_timer += 5; // Speed up fall
+            state->fall_timer += 5; // Speed up fall
         }
 
         // Gravity
-        state.fall_timer++;
-        if (state.fall_timer >= state.fall_speed) {
-            state.fall_timer = 0;
-            state.current.y++;
+        state->fall_timer++;
+        if (state->fall_timer >= state->fall_speed) {
+            state->fall_timer = 0;
+            state->current.y++;
             
-            if (!canPlace(state.current)) {
-                state.current.y--; // Revert move
-                placePiece(state.current);
+            if (!canPlace(&state->current)) {
+                state->current.y--; // Revert move
+                placePiece(&state->current);
                 
                 int cleared = clearLines();
-                state.score += cleared * 100;
-                state.lines += cleared;
+                state->score += cleared * 100;
+                state->lines += cleared;
                 
                 // Increase difficulty
-                if (state.lines > 0 && state.lines % 10 == 0) {
-                    state.fall_speed = (state.fall_speed > 10) ? state.fall_speed - 2 : 10;
+                if (state->lines > 0 && state->lines % 10 == 0) {
+                    state->fall_speed = (state->fall_speed > 10) ? state->fall_speed - 2 : 10;
                 }
                 
-                spawnNewPiece(&state);
+                spawnNewPiece(getNextPiece());
             }
         }
 
@@ -475,13 +473,13 @@ int main(int argc, char* args[]) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        drawBoard(renderer);
-        drawPiece(renderer, state.current);
+        drawBoard();
+        drawPiece(&state->current);
 
         // Draw next piece previews
         for (int i = 0; i < 5; i++) {
             Piece preview_piece;
-            preview_piece.type = next_piece_queue[i];
+            preview_piece.type = state->next_piece_queue[i];
             preview_piece.x = BOARD_WIDTH + 1; // Preview area to the right of board
             preview_piece.y = i * 4; // Stack previews vertically
             preview_piece.rotation = 0;
@@ -490,13 +488,13 @@ int main(int argc, char* args[]) {
                     preview_piece.blocks[row][col] = tetromino[preview_piece.type][row][col];
                 }
             }
-            drawPiece(renderer, preview_piece);
+            drawPiece(&preview_piece);
         }
         
         // Draw hold piece
-        if (state.hold_piece != -1) {
+        if (state->hold_piece != -1) {
             Piece hold_preview;
-            hold_preview.type = state.hold_piece;
+            hold_preview.type = state->hold_piece;
             hold_preview.x = -5; // Preview area to the left of board
             hold_preview.y = 0; // Top of preview area
             hold_preview.rotation = 0;
@@ -505,7 +503,7 @@ int main(int argc, char* args[]) {
                     hold_preview.blocks[row][col] = tetromino[hold_preview.type][row][col];
                 }
             }
-            drawPiece(renderer, hold_preview);
+            drawPiece(&hold_preview);
         }
 
         
@@ -513,7 +511,7 @@ int main(int argc, char* args[]) {
         // Update window title to show score and lines
         {
             char title[128];
-            snprintf(title, sizeof(title), "Tetris - Score: %d  Lines: %d", state.score, state.lines);
+            snprintf(title, sizeof(title), "Tetris - Score: %d  Lines: %d", state->score, state->lines);
             SDL_SetWindowTitle(window, title);
         }
 
@@ -521,8 +519,8 @@ int main(int argc, char* args[]) {
         SDL_Delay(FRAME_DELAY);
     }
 
-    if (state.game_over) {
-        printf("Game Over! Score: %d, Lines: %d\n", state.score, state.lines);
+    if (state->game_over) {
+        printf("Game Over! Score: %d, Lines: %d\n", state->score, state->lines);
     }
 
     SDL_DestroyRenderer(renderer);
