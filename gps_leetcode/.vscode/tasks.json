@@ -21,7 +21,7 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+                "C:\\my_program_files\\skku\\gps_leetcode\\0execution_files\\${fileBasenameNoExtension}.exe"
             ],
  
             // "cwd" : 빌드 작업이 실행될 경로, 해당 프로젝트 폴더입니다.
@@ -65,7 +65,7 @@
             },
             "args": [
                 "/C", 
-                "${fileDirname}\\${fileBasenameNoExtension}"
+                "C:\\my_program_files\\skku\\gps_leetcode\\0execution_files\\${fileBasenameNoExtension}.exe"
             ]
         }
     ],
