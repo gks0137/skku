@@ -12,10 +12,10 @@ public:
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(0);
+    Solution sol;
 
 
     string s = "abcabcbb";
-    Solution sol;
     cout << sol.lengthOfLongestSubstring(s) << "\n";
 
 
