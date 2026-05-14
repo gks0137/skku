@@ -32,7 +32,7 @@ const int BOARD_OFFSET_Y = 50; // Example: Start board 50px from top
 SDL_Window* window = NULL;     // The window we'll be rendering to
 SDL_Renderer* renderer = NULL; // The renderer for the window
 const SDL_Color colors[8] = {
-    {50, 50, 50, 255},       // Blank
+    {50, 50, 50, 255},       // blank
     {0, 255, 255, 255},   // I
     {0, 0, 255, 255},     // J
     {255, 128, 0, 255},   // L

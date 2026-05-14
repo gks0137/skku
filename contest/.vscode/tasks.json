@@ -19,14 +19,9 @@
                 "-fdiagnostics-color=always",
                 "-Wall",
                 "-g",
-                "${fileDirname}\\${fileBasename}",
+                "${file}",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe",
-				"-I${workspaceFolder}\\libs\\include", 
-				"-L${workspaceFolder}\\libs\\lib", 
-				"-lmingw32", 
-				"-lSDL2main", 
-				"-lSDL2"
+                "C:\\my_program_files\\skku\\contest\\0execution_files\\${fileBasenameNoExtension}.exe"
             ],
  
             // "cwd" : 빌드 작업이 실행될 경로, 해당 프로젝트 폴더입니다.
@@ -70,7 +65,7 @@
             },
             "args": [
                 "/C", 
-                "${fileDirname}\\${fileBasenameNoExtension}"
+                "C:\\my_program_files\\skku\\contest\\0execution_files\\${fileBasenameNoExtension}.exe"
             ]
         }
     ],
