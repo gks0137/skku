@@ -170,7 +170,7 @@ int main(int argc, char* args[]) {
                     case SDLK_DOWN:
                         if (!CheckCollision(currentPieceX, currentPieceY + 1, currentPieceType, currentPieceRotation)) {
                             currentPieceY++;
-                        }
+                        } else last_fall_time = -BLOCK_FALL_INTERVAL; // force lockPiece
                         break;
                     case SDLK_UP:
                     case SDLK_x:
