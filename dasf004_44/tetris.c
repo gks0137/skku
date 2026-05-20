@@ -11,7 +11,7 @@
 
 // --- Game Constants ---
 // Screen dimensions
-#define SCREEN_WIDTH 640
+#define SCREEN_WIDTH 620
 #define SCREEN_HEIGHT 740
 
 // Tetris Board dimensions (in terms of blocks)
@@ -25,7 +25,7 @@ const int BOARD_DRAW_WIDTH = COLUMNS * BLOCK_SIZE;
 const int BOARD_DRAW_HEIGHT = ROWS * BLOCK_SIZE;
 
 // Offset to draw the board (e.g., to center it or place UI next to it)
-const int BOARD_OFFSET_X = 50; // Example: Start board 50px from left
+const int BOARD_OFFSET_X = 160; // Example: Start board 50px from left
 const int BOARD_OFFSET_Y = 50; // Example: Start board 50px from top
 
 // --- Global SDL Variables ---
@@ -43,10 +43,22 @@ const SDL_Color colors[8] = {
 };
 
 // --- Variables for Tetris logic --- 
+
 // The main game board: a 2D array representing the grid.
 // Each cell stores whether it's EMPTY (0) or FILLED (1).
-int board[ROWS][COLUMNS]; // Will be initialized in this project.
+int board[ROWS][COLUMNS];
 
+// track falling
+int last_fall_time;
+
+// next piece preview
+// initialized to -1 (to be replaced)
+int nextPieces[5] = {-1};
+
+// holding piece
+// initialized to -1 (no piece in hold)
+int holdPiece = -1;
+int holdUsed = 0; // can swap once
 
 // *** Project #1: Define different types and shapes of each Tetromino block *** 
 // Hint: You can use 4D arrays "int shapes[7][4][4][4]" to represent 7 types of tetromino block, each with 4 different shapes, 4 x 4 blocks.
@@ -106,8 +118,9 @@ void DrawCurrentPiece(); // Function to draw the current Tetromino piece on the 
 void DrawBoard(); // Function to draw the board.
 bool CheckCollision(int newX, int newY, int pType, int pRotation); // true if collides
 void LockPiece(); // lock on the board
-// void SpawnNewPiece(); // spawn new piece. (collision not checked)
-
+void SpawnNewPiece(); // spawn new piece. (collision not checked)
+void SwapHoldPiece(); // swap current piece with hold piece
+void DrawNextPiecesAndHoldPiece(); // draw next piece preview
 // --- Main Function ---
 int main(int argc, char* args[]) {
     // Start up SDL and create window/renderer
@@ -142,25 +155,73 @@ int main(int argc, char* args[]) {
                     case SDLK_ESCAPE: // Quit on Escape key
                         running = false;
                         break;
-                        // Other key handling will be added in later sessions
+                    case SDLK_LEFT:
+                        if (!CheckCollision(currentPieceX - 1, currentPieceY, currentPieceType, currentPieceRotation)) {
+                            currentPieceX--;
+                        }
+                        break;
+                    case SDLK_RIGHT:
+                        if (!CheckCollision(currentPieceX + 1, currentPieceY, currentPieceType, currentPieceRotation)) {
+                            currentPieceX++;
+                        }
+                        break;
+                    case SDLK_DOWN:
+                        if (!CheckCollision(currentPieceX, currentPieceY + 1, currentPieceType, currentPieceRotation)) {
+                            currentPieceY++;
+                        }
+                        break;
+                    case SDLK_UP:
+                    case SDLK_x:
+                        if (!CheckCollision(currentPieceX, currentPieceY, currentPieceType, (currentPieceRotation + 1) % 4)) {
+                            currentPieceRotation = (currentPieceRotation + 1) % 4;
+                        }
+                        break;
+                    case SDLK_z:
+                        if (!CheckCollision(currentPieceX, currentPieceY, currentPieceType, (currentPieceRotation + 3) % 4)) {
+                            currentPieceRotation = (currentPieceRotation + 3) % 4;
+                        }
+                        break;
+                    case SDLK_c:
+                    case SDLK_LSHIFT:
+                        if (!holdUsed) {
+                            if (holdPiece == -1) {
+                                SwapHoldPiece();
+                                holdUsed = 1; // can't use again
+                                last_fall_time = SDL_GetTicks();
+                            } else {
+                                if (!CheckCollision(currentPieceX, currentPieceY, holdPiece, 0)) {
+                                    SwapHoldPiece();
+                                    holdUsed = 1; // can't use again
+                                    last_fall_time = SDL_GetTicks();
+                                }
+                            }
+                        } break;
+                    case SDLK_r:
+                        InitializeGame(); // Restart the game
+                        break;
+                    case SDLK_SPACE:
+                        while (!CheckCollision(currentPieceX, currentPieceY + 1, currentPieceType, currentPieceRotation)) {
+                            currentPieceY++;
+                        }
+                        last_fall_time = -BLOCK_FALL_INTERVAL; // force lockPiece
+                        break;
                 }
             }
         }
 
         // --- Game Logic Updates would go here in later sessions ---
 
-        static int last_fall_time = 0;
         if (SDL_GetTicks() - last_fall_time > BLOCK_FALL_INTERVAL) {
             if (!CheckCollision(currentPieceX, currentPieceY + 1, currentPieceType, currentPieceRotation)) {
                 currentPieceY++;
             } else {
                 LockPiece();
-                currentPieceX = 3;
-                currentPieceY = 0;
-                currentPieceRotation = rand() % 4;
-                currentPieceType = rand() % 7;
-                // SpawnNewPiece();
-                running = !CheckCollision(currentPieceX, currentPieceY, currentPieceType, currentPieceRotation);
+                holdUsed = 0; // can swap again
+                if (!CheckCollision(3, 0, nextPieces[0], 0)) {
+                    SpawnNewPiece();
+                } else {
+                    InitializeGame(); // Restart
+                }
             }
             last_fall_time = SDL_GetTicks();
         }
@@ -186,9 +247,11 @@ int main(int argc, char* args[]) {
         SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255); // Lighter gray for border
         SDL_RenderDrawRect(renderer, &boardRect);
 
-        // 3. Draw the current Tetromino piece using its global state variables
+        // 3. Draw the game screen
         DrawBoard();
         DrawCurrentPiece();
+        DrawNextPiecesAndHoldPiece();
+
 
         // 4. Update the screen with what we've drawn
         SDL_RenderPresent(renderer);
@@ -265,7 +328,7 @@ void CloseSDL() {
 }
 
 void InitializeGame() {
-    // To-do: Initialize the game board to be empty (0).
+    // Initialize the game board to be empty (0).
     // Hint: Game board is essentially 2D array with ROWS and COLUMNS.
     // Hint: int board[ROWS][COLUMNS];
     for (int row = 0; row < ROWS; row++) {
@@ -274,14 +337,13 @@ void InitializeGame() {
         }
     }
 
-    // To-do: Initialize the first tetromino block using the global variables defined earlier.
+    // Initialize the first tetromino block using the global variables defined earlier.
     srand(time(NULL));
-    currentPieceX = 3;
-    currentPieceY = 0;
-    currentPieceRotation = rand() % 4;
-    currentPieceType = rand() % 7;
-    // SpawnNewPiece();
-
+    nextPieces[0] = -1; // force initialize
+    holdPiece = -1; // initialize
+    holdUsed = 0;
+    SpawnNewPiece();
+    last_fall_time = SDL_GetTicks();
 
     printf("Game Initialized. Current piece type: %d at board coordinates (%d, %d), rotation: %d\n",
         currentPieceType, currentPieceX, currentPieceY, currentPieceRotation);
@@ -290,7 +352,7 @@ void InitializeGame() {
 void DrawCurrentPiece() {
     // Function to draw the current Tetromino piece on the board.
 
-    // To-do: Calculate which block in the board[ROWS][COLUMNS] should be filled based on the "shapes[7][4][4][4]" array 
+    // Calculate which block in the board[ROWS][COLUMNS] should be filled based on the "shapes[7][4][4][4]" array 
     // and the global variables currentPieceX, currentPieceY, currentPieceType, and currentPeiceRotation 
     // that you initialized in InitalizeGame() function.
     int tetrominos[4][2]; // [row, col]
@@ -304,7 +366,7 @@ void DrawCurrentPiece() {
         }
     }
 
-    //  To-do: Calculate the actual pixel position of the block using BOARD_OFFSET and BLOCK_SIZE.
+    //  Calculate the actual pixel position of the block using BOARD_OFFSET and BLOCK_SIZE.
     // the pixel position of the block [X][Y] is [BOARD_OFFSET_X + X*BLOCK_SIZE][BOARD_OFFSET_Y + Y*BLOCK_SIZE]
     int tetromino_pixels[4][2]; // [x, y]
     for (int i = 0; i < 4; i++) {
@@ -312,7 +374,7 @@ void DrawCurrentPiece() {
         tetromino_pixels[i][1] = tetrominos[i][0] * BLOCK_SIZE + BOARD_OFFSET_Y;
     }
 
-    // To-do: Use DrawBlock function below to draw a block starting at (pixelX, pixelY) pixel coordinate.
+    // Use DrawBlock function below to draw a block starting at (pixelX, pixelY) pixel coordinate.
     for (int i = 0; i < 4; i++) {
         DrawBlock(tetromino_pixels[i][0], tetromino_pixels[i][1], colors[currentPieceType + 1]);
     }
@@ -370,27 +432,77 @@ void LockPiece() {
     }
 }
 
-// void SpawnNewPiece() {
-//     static int bag[7] = {0, 1, 2, 3, 4, 5, 6};
-//     static int bag_index = 7;
+void SpawnNewPiece() {
+    static int bag[7] = {0, 1, 2, 3, 4, 5, 6};
+    static int bag_index = 7;
 
-//     if (bag_index >= 7) {
-//         for (int i = 6; i > 0; i--) {
-//             int j = rand() % (i + 1);
-//             int temp = bag[i];
-//             bag[i] = bag[j];
-//             bag[j] = temp;
-//         }
-//         bag_index = 0;
-//     }
+    if (nextPieces[0] == -1) bag_index = 7; // Force shuffle on first call
 
-//     currentPieceX = 3;
-//     currentPieceY = 0;
-//     currentPieceRotation = 0;
-//     currentPieceType = bag[bag_index++];
-// }
+    if (bag_index >= 7) {
+        for (int i = 6; i > 0; i--) {
+            int j = rand() % (i + 1);
+            int temp = bag[i];
+            bag[i] = bag[j];
+            bag[j] = temp;
+        }
+        bag_index = 0;
+    }
 
+    if (nextPieces[0] == -1) {
+        currentPieceType = bag[bag_index++];
+        for (int i = 0; i < 5; i++) {
+            nextPieces[i] = bag[bag_index++];
+        }
+    } else {
+        currentPieceType = nextPieces[0];
+        for (int i = 0; i < 4; i++) {
+            nextPieces[i] = nextPieces[i + 1];
+        }
+        nextPieces[4] = bag[bag_index++];
+    }
 
+    currentPieceX = 3;
+    currentPieceY = 0;
+    currentPieceRotation = 0;
+}
 
+void SwapHoldPiece() {
+    if (holdPiece == -1) {
+        holdPiece = currentPieceType;
+        SpawnNewPiece();
+    } else {
+        int temp = holdPiece;
+        holdPiece = currentPieceType;
+        currentPieceType = temp;
+        currentPieceX = 3;
+        currentPieceY = 0;
+        currentPieceRotation = 0;
+    }
+}
+
+void DrawNextPiecesAndHoldPiece() {
+    for (int i = 0; i < 5; i++) {
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 4; col++) {
+                if (shapes[nextPieces[i]][0][row][col] == 1) {
+                    int pixelX = BOARD_OFFSET_X + BOARD_DRAW_WIDTH + 20 + col * BLOCK_SIZE;
+                    int pixelY = BOARD_OFFSET_Y + i * 4 * BLOCK_SIZE + row * BLOCK_SIZE;
+                    DrawBlock(pixelX, pixelY, colors[nextPieces[i] + 1]);
+                }
+            }
+        }
+    }
+    if (holdPiece != -1) {
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 4; col++) {
+                if (shapes[holdPiece][0][row][col] == 1) {
+                    int pixelX = BOARD_OFFSET_X - 20 - 4 * BLOCK_SIZE + col * BLOCK_SIZE;
+                    int pixelY = BOARD_OFFSET_Y + row * BLOCK_SIZE;
+                    DrawBlock(pixelX, pixelY, colors[holdPiece + 1]);
+                }
+            }
+        }
+    }
+}
 
 
