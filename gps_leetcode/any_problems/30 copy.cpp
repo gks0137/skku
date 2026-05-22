@@ -5,6 +5,7 @@ using namespace std;
 class Solution {
 public:
     vector<int> findSubstring(string s, vector<string>& words) {
+        sort(words.begin(), words.end());
         vector<int> res;
         int m = words.size();
         int word_len = words[0].size();
