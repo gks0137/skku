@@ -1,22 +1,21 @@
 #include <stdio.h>
-#include <stdlib.h>
 
-struct Temp {
-    int a;
-    float b;
+
+union Data {
+    int i;
+    float f;
 };
-
-struct Temp createTemp(int a, float b) {
-    struct Temp temp;
-    temp.a = a;
-    temp.b = b;
-    return temp;
-}
 
 
 int main() {
     
-    struct Temp a = createTemp(5, 3.14);
+    union Data data;
+    data.i = 10;
+    printf("Integer: %d\n", data.i);
+    data.f = 3.14;
+    printf("Float: %.2f\n", data.f);
+    int s = sizeof(data);
+    printf("Size of union: %d bytes\n", s);
     
 
 
