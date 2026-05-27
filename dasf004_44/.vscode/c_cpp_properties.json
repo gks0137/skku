@@ -5,7 +5,7 @@
             "includePath": [
                 "${workspaceFolder}",
                 "${workspaceFolder}\\libs\\include",
-                "C:\\my_program_files\\skku\\dasf004_44\\Tetris_Windows\\Tetris_Windows\\libs\\include"
+                "C:\\my_program_files\\skku\\dasf004_44\\libs\\include"
             ],
             "defines": [
                 "_DEBUG",
