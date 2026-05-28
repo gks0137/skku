@@ -4,20 +4,26 @@ using namespace std;
 
 class Solution {
 public:
-    string countAndSay(int n) {
-        if (n == 1) return "1";
-        string prev = countAndSay(n - 1);
-        string result;
-        int count = 1;
-        for (int i = 0; i < prev.length(); i++) {
-            if (i + 1 < prev.length() && prev[i] == prev[i + 1]) {
-                count++;
-            } else {
-                result += to_string(count) + prev[i];
-                count = 1;
+    vector<vector<int>> combinationSum(vector<int>& candidates, int target) {
+        vector<vector<int>> result;
+        vector<int> current;
+        backtrack(candidates, target, 0, current, result);
+        return result;
+    }
+
+private:
+    void backtrack(vector<int>& candidates, int target, int start, vector<int>& current, vector<vector<int>>& result) {
+        if (target == 0) {
+            result.push_back(current);
+            return;
+        }
+        for (int i = start; i < candidates.size(); i++) {
+            if (candidates[i] <= target) {
+                current.push_back(candidates[i]);
+                backtrack(candidates, target - candidates[i], i, current, result);
+                current.pop_back();
             }
         }
-        return result;
     }
 };
 
@@ -28,8 +34,15 @@ int main() {
     cin.tie(0);
     Solution sol;
 
-    int n = 4;
-    cout << sol.countAndSay(n) << endl;
+    vector<int> candidates = {2,3,6,7};
+    int target = 7;
+        vector<vector<int>> res = sol.combinationSum(candidates, target);
+        for (auto& v : res) {
+            for (auto& x : v) {
+                cout << x << " ";
+            }
+            cout << endl;
+        }
 
     return 0;
 }
