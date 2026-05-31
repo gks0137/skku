@@ -4,29 +4,28 @@ using namespace std;
 
 class Solution {
 public:
-    vector<vector<int>> combinationSum(vector<int>& candidates, int target) {
-        vector<vector<int>> result;
-        vector<int> current;
-        backtrack(candidates, target, 0, current, result);
-        return result;
-    }
+    vector<vector<int>> combinationSum2(vector<int>& candidates, int target) {
+        vector<vector<int>> res;
+        vector<int> path;
+        sort(candidates.begin(), candidates.end());
 
-private:
-    void backtrack(vector<int>& candidates, int target, int start, vector<int>& current, vector<vector<int>>& result) {
-        if (target == 0) {
-            result.push_back(current);
-            return;
-        }
-        for (int i = start; i < candidates.size(); i++) {
-            if (candidates[i] <= target) {
-                current.push_back(candidates[i]);
-                backtrack(candidates, target - candidates[i], i, current, result);
-                current.pop_back();
+        function<void(int, int)> backtrack = [&](int start, int sum) {
+            if (sum == target) {
+                res.push_back(path);
+                return;
             }
-        }
+            for (int i = start; i < candidates.size(); ++i) {
+                if (i > start && candidates[i] == candidates[i - 1]) continue; // skip duplicates
+                if (sum + candidates[i] > target) break; // early stopping
+                path.push_back(candidates[i]);
+                backtrack(i + 1, sum + candidates[i]); // move to the next index
+                path.pop_back();
+            }
+        };
+        backtrack(0, 0);
+        return res;
     }
 };
-
 
 
 int main() {
@@ -34,15 +33,15 @@ int main() {
     cin.tie(0);
     Solution sol;
 
-    vector<int> candidates = {2,3,6,7};
-    int target = 7;
-        vector<vector<int>> res = sol.combinationSum(candidates, target);
-        for (auto& v : res) {
-            for (auto& x : v) {
-                cout << x << " ";
-            }
-            cout << endl;
+    vector<int> candidates = {10,1,2,7,6,1,5};
+    int target = 8;
+    vector<vector<int>> result = sol.combinationSum2(candidates, target);
+    for (const auto& combination : result) {
+        for (int num : combination) {
+            cout << num << " ";
         }
+        cout << endl;
+    }
 
     return 0;
 }
