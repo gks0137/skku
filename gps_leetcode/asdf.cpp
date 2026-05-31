@@ -4,26 +4,25 @@ using namespace std;
 
 class Solution {
 public:
-    vector<vector<int>> combinationSum2(vector<int>& candidates, int target) {
-        vector<vector<int>> res;
-        vector<int> path;
-        sort(candidates.begin(), candidates.end());
-
-        function<void(int, int)> backtrack = [&](int start, int sum) {
-            if (sum == target) {
-                res.push_back(path);
-                return;
+    string multiply(string num1, string num2) {
+        string result(num1.size() + num2.size(), '0');
+        for (int i = num1.size() - 1; i >= 0; --i) {
+            for (int j = num2.size() - 1; j >= 0; --j) {
+                int mul = (num1[i] - '0') * (num2[j] - '0');
+                int sum = mul + (result[i + j + 1] - '0');
+                result[i + j + 1] = (sum % 10) + '0';
+                result[i + j] += sum / 10;
             }
-            for (int i = start; i < candidates.size(); ++i) {
-                if (i > start && candidates[i] == candidates[i - 1]) continue; // skip duplicates
-                if (sum + candidates[i] > target) break; // early stopping
-                path.push_back(candidates[i]);
-                backtrack(i + 1, sum + candidates[i]); // move to the next index
-                path.pop_back();
-            }
-        };
-        backtrack(0, 0);
-        return res;
+        }
+        // Remove leading zeros
+        int start = 0;
+        while (start < result.size() && result[start] == '0') {
+            ++start;
+        }
+        if (start == result.size()) {
+            return "0";
+        }
+        return result.substr(start);
     }
 };
 
@@ -33,15 +32,8 @@ int main() {
     cin.tie(0);
     Solution sol;
 
-    vector<int> candidates = {10,1,2,7,6,1,5};
-    int target = 8;
-    vector<vector<int>> result = sol.combinationSum2(candidates, target);
-    for (const auto& combination : result) {
-        for (int num : combination) {
-            cout << num << " ";
-        }
-        cout << endl;
-    }
-
+    string num1 = "498828660196", num2 = "840477629533";
+    cout << sol.multiply(num1, num2) << endl;
+    
     return 0;
 }
