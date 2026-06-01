@@ -4,15 +4,21 @@ using namespace std;
 
 class Solution {
 public:
-    int jump(vector<int>& nums) {
-        vector<int> dp(nums.size(), INT_MAX);
-        dp[0] = 0;
-        for (int i = 0; i < nums.size(); i++) {
-            for (int j = 1; j <= nums[i] && i + j < nums.size(); j++) {
-                dp[i + j] = min(dp[i + j], dp[i] + 1);
+    vector<vector<int>> permute(vector<int>& nums) {
+        vector<vector<int>> result;
+        function<void(int)> backtrack = [&](int start) {
+            if (start == nums.size()) {
+                result.push_back(nums);
+                return;
             }
-        }
-        return dp.back();
+            for (int i = start; i < nums.size(); ++i) {
+                swap(nums[start], nums[i]);
+                backtrack(start + 1);
+                swap(nums[start], nums[i]);
+            }
+        };
+        backtrack(0);
+        return result;
     }
 };
 
@@ -21,8 +27,8 @@ int main() {
     cin.tie(0);
     Solution sol;
 
-    vector<int> nums = {2,3,1,1,4};
-    cout << sol.jump(nums) << endl;
+    vector<int> nums = {1, 2, 3};
+    vector<vector<int>> result = sol.permute(nums);
     
     return 0;
 }
