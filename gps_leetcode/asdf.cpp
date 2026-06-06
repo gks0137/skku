@@ -4,31 +4,21 @@ using namespace std;
 
 class Solution {
 public:
-    bool next_permutation(vector<int>& nums) {
-        int i = nums.size() - 2;
-        while (i >= 0 && nums[i] >= nums[i + 1]) {
-            i--;
+    double myPow(double x, int n) {
+        double ans = 1.0;
+        long long nn = n;
+        if (nn < 0) {
+            nn = -nn;
+            x = 1 / x;
         }
-        if (i < 0) {
-            reverse(nums.begin(), nums.end());
-            return false;
+        while (nn > 0) {
+            if (nn % 2 == 1) {
+                ans *= x;
+            }
+            x *= x;
+            nn /= 2;
         }
-        int j = nums.size() - 1;
-        while (nums[j] <= nums[i]) {
-            j--;
-        }
-        swap(nums[i], nums[j]);
-        reverse(nums.begin() + i + 1, nums.end());
-        return true;
-    }
-
-    vector<vector<int>> permuteUnique(vector<int>& nums) {
-        vector<vector<int>> result;
-        sort(nums.begin(), nums.end());
-        do {
-            result.push_back(nums);
-        } while (next_permutation(nums));
-        return result;
+        return ans;
     }
 };
 
@@ -37,14 +27,9 @@ int main() {
     cin.tie(0);
     Solution sol;
 
-    vector<int> nums = {1, 2, 1};
-    vector<vector<int>> result = sol.permuteUnique(nums);
-    for (const auto& perm : result) {
-        for (int num : perm) {
-            cout << num << " ";
-        }
-        cout << endl;
-    }
+    double x = 2.00000;
+    int n = 10;
+    cout << sol.myPow(x, n) << "\n";
     
     return 0;
 }
