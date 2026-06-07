@@ -4,32 +4,24 @@ using namespace std;
 
 class Solution {
 public:
-    double myPow(double x, int n) {
-        double ans = 1.0;
-        long long nn = n;
-        if (nn < 0) {
-            nn = -nn;
-            x = 1 / x;
+    int maxSubArray(vector<int>& nums) {
+        int max_sum = nums[0];
+        for (int i = 1; i < nums.size(); i++) {
+            nums[i] = max(nums[i], nums[i] + nums[i - 1]);
+            max_sum = max(max_sum, nums[i]);
         }
-        while (nn > 0) {
-            if (nn % 2 == 1) {
-                ans *= x;
-            }
-            x *= x;
-            nn /= 2;
-        }
-        return ans;
+        return max_sum;
     }
 };
+
 
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(0);
     Solution sol;
 
-    double x = 2.00000;
-    int n = 10;
-    cout << sol.myPow(x, n) << "\n";
+    vector<int> nums = {-2,1,-3,4,-1,2,1,-5,4};
+    cout << sol.maxSubArray(nums) << endl;
     
     return 0;
 }
