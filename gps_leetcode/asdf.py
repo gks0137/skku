@@ -1,9 +1,17 @@
 import numpy as np
 from math import sqrt
-v1 = np.array([3, 0, 2, 0, 1, -1])
-v2 = np.array([3, -4, 5, 0, 2, 0])
-v3 = np.array([3, 0, 3, -4, 5, 0])
+#np.set_printoptions(precision=9, suppress=False)
 
-def inner_product(v1, v2):
-    return sum(a * b for a, b in zip(v1, v2))
 
+A = np.array([[22, -4], [10, -20], [-10, 20], [-22, 4]])
+
+# SVD decomposition
+U, S, V = np.linalg.svd(A)
+b = np.array([[-4], [4], [2], [-3]])
+# least squares solution
+S_pinv = np.zeros((V.shape[0], U.shape[1]))
+for i in range(len(S)):
+    if S[i] > 1e-10:  # Avoid division by zero
+        S_pinv[i, i] = 1 / S[i]
+x = V.T @ S_pinv @ U.T @ b
+print(x)
