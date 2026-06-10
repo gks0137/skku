@@ -14,6 +14,10 @@
 #define SCREEN_WIDTH 620
 #define SCREEN_HEIGHT 740
 
+#define MAX_LEADERBOARD_ENTRY 10
+int leaderboard[MAX_LEADERBOARD_ENTRY];
+#define LEADERBOARD_FILE "leaderboard.dat"
+
 // Tetris Board dimensions (in terms of blocks)
 #define BLOCK_SIZE 30
 #define COLUMNS 10
@@ -123,6 +127,11 @@ void SpawnNextPiece(); // spawn new piece. (collision not checked)
 void SwapHoldPiece(); // swap current piece with hold piece
 void DrawNextPiecesAndHoldPiece(); // draw next piece preview
 void LineClearing(); // check and clear lines
+void LoadLeaderboard(); // load leaderboard
+void SaveLeaderboard(); // save leaderboard
+int compare(const void* a, const void* b);
+void AddToLeaderboard(int finalScore); // add score to leaderboard
+void PrintGameOverInfo(); // print game over info and leaderboard
 
 // --- Main Function ---
 int main(int argc, char* args[]) {
@@ -223,7 +232,10 @@ int main(int argc, char* args[]) {
                 if (!CheckCollision(3, 0, nextPieces[0], 0)) {
                     SpawnNextPiece();
                 } else {
-                    InitializeGame(); // Restart
+                    // InitializeGame(); // Restart
+                    AddToLeaderboard(score);
+                    PrintGameOverInfo();
+                    running = false;
                 }
             }
             last_fall_time = SDL_GetTicks();
@@ -348,6 +360,7 @@ void InitializeGame() {
     holdUsed = 0;
     SpawnNextPiece();
     last_fall_time = SDL_GetTicks();
+    LoadLeaderboard();
 
     printf("Game Initialized. Current piece type: %d at board coordinates (%d, %d), rotation: %d\n",
         currentPieceType, currentPieceX, currentPieceY, currentPieceRotation);
@@ -561,8 +574,54 @@ void LineClearing() {
     
 }
 
+void LoadLeaderboard() {
+    FILE* file = fopen(LEADERBOARD_FILE, "rb");
+    if (file == NULL) {
+        printf("No leaderboard file found. A new one will be created. \n");
+        return;
+    }
+    fread(leaderboard, sizeof(int), MAX_LEADERBOARD_ENTRY, file);
+    fclose(file);
+    printf("Loaded scores from %s.\n", LEADERBOARD_FILE);
+}
 
+void SaveLeaderboard() {
+    FILE* file = fopen(LEADERBOARD_FILE, "wb");
+    if (file == NULL) {
+        printf("Error: Could not save leaderboard to file!\n");
+        return;
+    }
+    int leaderboardCount = sizeof(leaderboard) / sizeof(int);
+    fwrite(leaderboard, sizeof(int), leaderboardCount, file);
+    fclose(file);
+    printf("Leaderboard saved.\n");
+}
 
+int compare( const void* a, const void* b) {
+    int int_a = * ( (int*) a );
+    int int_b = * ( (int*) b );
+    if (int_a == int_b) return 0;
+    else if (int_a < int_b) return 1;
+    else return -1;
+}
 
+void AddToLeaderboard(int finalScore) {
+    int leaderboardCount = sizeof(leaderboard) / sizeof(int);
+    if (leaderboardCount < MAX_LEADERBOARD_ENTRY || finalScore > leaderboard [MAX_LEADERBOARD_ENTRY - 1]) {
+        leaderboard [MAX_LEADERBOARD_ENTRY - 1] = finalScore;
+    } else return;
+    qsort(leaderboard, leaderboardCount, sizeof(int), compare);
+    SaveLeaderboard();
+}
 
-
+void PrintGameOverInfo() {
+    int leaderboardCount = sizeof(leaderboard) / sizeof(int);
+    printf("\n\n===================================\n");
+    printf("            GAME OVER\n");
+    printf("-----------------------------------\n");
+    printf("         Leaderboard: \n");
+    for (int i = 0; i < leaderboardCount; ++i) {
+        printf("      %2d. %d\n", i + 1, leaderboard[i]);
+    }
+    printf("===================================\n");
+}
