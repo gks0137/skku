@@ -4,58 +4,43 @@ using namespace std;
 
 class Solution {
 public:
-    vector<int> spiralOrder(vector<vector<int>>& matrix) {
-        vector<int> result;
-        if (matrix.empty() || matrix[0].empty()) return result;
+    vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int>& newInterval) {
+        vector<vector<int>> merged;
+        bool inserted = false;
 
-        int top = 0, bottom = matrix.size() - 1;
-        int left = 0, right = matrix[0].size() - 1;
-
-        while (top <= bottom && left <= right) {
-            // right
-            for (int j = left; j <= right; j++) {
-                result.push_back(matrix[top][j]);
+        for (const auto& interval : intervals) {
+            if (!inserted && newInterval[1] < interval[0]) {
+                merged.push_back(newInterval);
+                inserted = true;
             }
-            top++;
-
-            // down
-            for (int i = top; i <= bottom; i++) {
-                result.push_back(matrix[i][right]);
-            }
-            right--;
-
-            // left
-            if (top <= bottom) {
-                for (int j = right; j >= left; j--) {
-                    result.push_back(matrix[bottom][j]);
-                }
-                bottom--;
-            }
-
-            // up
-            if (left <= right) {
-                for (int i = bottom; i >= top; i--) {
-                    result.push_back(matrix[i][left]);
-                }
-                left++;
+            if (interval[1] < newInterval[0] || interval[0] > newInterval[1]) {
+                merged.push_back(interval);
+            } else {
+                newInterval[0] = min(newInterval[0], interval[0]);
+                newInterval[1] = max(newInterval[1], interval[1]);
             }
         }
 
-        return result;
+        if (!inserted) {
+            merged.push_back(newInterval);
+        }
+
+        return merged;
     }
 };
-
 
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(0);
     Solution sol;
 
-    vector<vector<int>> matrix = {{1,2,3},{4,5,6},{7,8,9}};
-    vector<int> result = sol.spiralOrder(matrix);
-    for (int num : result) {
-        cout << num << " ";
+    vector<vector<int>> intervals = {{1,3},{6,9}};
+    vector<int> newInterval = {2,5};
+    vector<vector<int>> result = sol.insert(intervals, newInterval);
+    for (const auto& interval : result) {
+        cout << "[" << interval[0] << "," << interval[1] << "] ";
     }
-    
+    cout << endl;
+
     return 0;
 }

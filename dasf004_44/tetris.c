@@ -624,4 +624,4 @@ void PrintGameOverInfo() {
         printf("      %2d. %d\n", i + 1, leaderboard[i]);
     }
     printf("===================================\n");
-}
+} 
