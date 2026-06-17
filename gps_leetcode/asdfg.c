@@ -1,24 +1,16 @@
 #include <stdio.h>
-
-
-union Data {
-    int i;
-    float f;
-};
+#include <string.h> 
 
 
 int main() {
     
-    union Data data;
-    data.i = 10;
-    printf("Integer: %d\n", data.i);
-    data.f = 3.14;
-    printf("Float: %.2f\n", data.f);
-    int s = sizeof(data);
-    printf("Size of union: %d bytes\n", s);
-    
-
-
+    char str[4] = "abc";
+    if (str[3] == '\0') {
+        puts("The string is null-terminated.");
+    } else {
+        puts("The string is not null-terminated.");
+    }
+    puts(str);
     
     return 0;
 }
