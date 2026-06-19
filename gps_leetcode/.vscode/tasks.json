@@ -54,6 +54,49 @@
             // "detail" : >tasks : run task를 했을 때 설명으로 보일 내용. 
             "detail":  "command : C:\\msys64\\ucrt64\\bin\\g++.exe"
         },
+
+        {
+            "type": "cppbuild",
+ 
+            "label": "C/C++: gcc.exe build active file",
+ 
+            "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe",
+ 
+            "args": [
+                "-fdiagnostics-color=always",
+                "-Wall",
+                "-g",
+                "${file}",
+                "-o",
+                "C:\\my_program_files\\skku\\gps_leetcode\\0execution_files\\${fileBasenameNoExtension}.exe"
+            ],
+ 
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+ 
+            "problemMatcher": { //컴파일 에러 확인
+                "fileLocation": [
+                    "relative",
+                    "${workspaceRoot}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            },
+ 
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+ 
+            "detail":  "command : C:\\msys64\\ucrt64\\bin\\gcc.exe"
+        },
         
         // 바이너리 실행
         {
