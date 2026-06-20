@@ -1,6 +1,7 @@
-# SKKU Programming Portfolio
+# SKKU Programming Repository (record of my solutions)
 
-A comprehensive repository containing my coursework, competitive programming solutions, and educational projects from Sungkyunkwan University (SKKU).
+A repository containing my coursework, competitive programming solutions, and educational projects from Sungkyunkwan University (SKKU).
+This is just for recording my solutions to various problems and algorithms, not intended for public use or distribution. (codes are not well documented)
 
 ## 🛠️ Technologies & Languages
 - **C++** - Primary language for competitive programming and algorithms
@@ -25,4 +26,4 @@ This repository serves as:
 
 ---
 
-*Last updated: May 2026*
+*Last updated: June 2026*
