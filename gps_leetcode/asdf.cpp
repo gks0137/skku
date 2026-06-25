@@ -4,23 +4,19 @@ using namespace std;
 
 class Solution {
 public:
-    int lengthOfLastWord(string s) {
-        int n = s.length();
-        int i = n - 1;
-        
-        // Skip trailing spaces
-        while (i >= 0 && s[i] == ' ') {
-            i--;
+    int countMajoritySubarrays(vector<int>& nums, int target) {
+        int n = nums.size();
+        int cur_state, ans = -1;
+        for (int i = 0; i < n; i++) {
+            cur_state = 0;
+            for (int j = i; j < n; j++) {
+                cur_state += nums[j] == target ? 1 : -1;
+                if (cur_state > 0) {
+                    ans++;
+                }
+            }
         }
-        
-        // Count the length of the last word
-        int length = 0;
-        while (i >= 0 && s[i] != ' ') {
-            length++;
-            i--;
-        }
-        
-        return length;
+        return ans;
     }
 };
 
@@ -32,8 +28,8 @@ int main() {
     cin.tie(0);
     Solution sol;
 
-    string s = "Hello World";
-    cout << sol.lengthOfLastWord(s) << endl;
+    
+
 
 
 
