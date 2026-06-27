@@ -1,0 +1,1227 @@
+/*
+ICPC TEAM NOTE
+
+last update: 2023-08-21
+author: yunny_world
+
+All implementations are made with function or struct.
+
+Contents
+
+1. Data Structure
+	1 - 1. Segment Tree
+	1 - 2. Lazy Propagation
+	1 - 3. Kosaraju (SCC)
+	1 - 4. LCA
+	1 - 5. Merge Sort Tree
+
+2. Geometry
+	2 - 1. CCW
+	2 - 2. 360 degree sort
+	2 - 3. Convex Hull
+	2 - 4. Rotating Calipers
+	2 - 5. Point in Convex Polygon
+
+3. Graph
+	3 - 1. Bellman-Ford
+	3 - 2. Eulerian Circuit
+	3 - 3. Bipartitie Matching
+	3 - 4. Edmonds-Karp
+	3 - 5. Dinic
+	3 - 6. Minimum Cost Maximum Flow
+	3 - 7. Centroid Decomposition
+
+4. Math
+	4 - 1. Seive of Eratosthenes
+	4 - 2. Euler Phi
+	4 - 3. Modular Inverse
+	4 - 4. Extended Euclid
+	4 - 5. Chinese Remainder Theorm
+	4 - 6. Catalan Number
+	4 - 7. Binomial Coefficient (N^2)
+	4 - 8. Lucas Theorm (Binomial Coefficient)
+
+5. String
+	5 - 1. Rabin-Karp
+	5 - 2. Trie
+	5 - 3. KMP
+	5 - 4. Manacher
+	5 - 5. Suffix Array
+
+6. ETC
+	6 - 1. Union Find
+	6 - 2. Ternary Search
+	6 - 3. Power with Divide and Conquer
+	6 - 4. Fibonacci Matrix
+	6 - 5. Convex Hull Trick
+*/
+#include <bits/stdc++.h>
+#define ll long long int
+using namespace std;
+
+/*
+Segment Tree
+*/
+struct ST
+{
+	ll n;
+	vector<ll> tree;
+	ST(ll n) :n(n), tree(4 * (n + 1)) {}
+	ll query(ll x, ll s, ll e, ll l, ll r)
+	{
+		if (l > e || r < s) return 0ll;
+		if (l <= s && e <= r) return tree[x];
+		ll L = query(x * 2, s, (s + e) / 2, l, r);
+		ll R = query(x * 2 + 1, (s + e) / 2 + 1, e, l, r);
+		return L + R;
+	}
+	void update(ll x, ll s, ll e, ll idx, ll val)
+	{
+		if (idx<s || idx>e) return;
+		if (s == e) tree[x] = val;
+		else
+		{
+			update(x * 2, s, (s + e) / 2, idx, val);
+			update(x * 2 + 1, (s + e) / 2 + 1, e, idx, val);
+			tree[x] = tree[x * 2] + tree[x * 2 + 1];
+		}
+	}
+};
+
+/*
+Lazy Propagation
+*/
+struct STLazy
+{
+	ll n;
+	vector<ll> tree, lazy;
+	STLazy(ll n) :n(n), tree(4 * (n + 1)), lazy(4 * (n + 1)) {}
+	void update_lazy(ll x, ll s, ll e)
+	{
+		tree[x] += (e - s + 1) * lazy[x];
+		if (s != e)
+		{
+			lazy[x * 2] += lazy[x];
+			lazy[x * 2 + 1] += lazy[x];
+		}
+		lazy[x] = 0;
+	}
+	void update_range(ll x, ll s, ll e, ll l, ll r, ll diff)
+	{
+		update_lazy(x, s, e);
+		if (l > e || s > r) return;
+		if (l <= s && e <= r)
+		{
+			tree[x] += (e - s + 1) * diff;
+			if (s != e)
+			{
+				lazy[x * 2] += diff;
+				lazy[x * 2 + 1] += diff;
+			}
+		}
+		else
+		{
+			update_range(x * 2, s, (s + e) / 2, l, r, diff);
+			update_range(x * 2 + 1, (s + e) / 2 + 1, e, l, r, diff);
+			tree[x] = tree[x * 2] + tree[x * 2 + 1];
+		}
+	}
+	ll query(ll x, ll s, ll e, ll l, ll r)
+	{
+		update_lazy(x, s, e);
+		if (l > e || r < s) return 0ll;
+		if (l <= s && e <= r) return tree[x];
+		ll L = query(x * 2, s, (s + e) / 2, l, r);
+		ll R = query(x * 2 + 1, (s + e) / 2 + 1, e, l, r);
+		return L + R;
+	}
+};
+
+/*
+Kosaraju (SCC)
+*/
+#define MAX_V 100005
+struct Kosaraju
+{
+	ll V, E, num = 0; // SCC number is 1-base
+	vector<ll> g[MAX_V], rg[MAX_V], order, SCC; // node number is 1-base
+	vector<bool> v;
+	Kosaraju(ll V, ll E) :V(V), E(E), SCC(V + 1, 0), v(V + 1, 0) {}
+	void dfs(ll x)
+	{
+		v[x] = 1;
+		for (auto y : g[x]) if (!v[y]) dfs(y);
+		order.push_back(x);
+	}
+	void rdfs(ll x, ll num)
+	{
+		v[x] = 1;
+		SCC[x] = num;
+		for (auto y : rg[x]) if (!v[y]) rdfs(y, num);
+	}
+	void go()
+	{
+		for (int i = 1; i <= V; i++) if(!v[i]) dfs(i);
+		fill(v.begin(), v.end(), 0);
+		reverse(order.begin(), order.end());
+		for (auto i : order) if (!SCC[i]) rdfs(i, ++num);
+	}
+};
+// Don't forget to build g[MAX_V] and rg[MAX_V]
+
+/*
+LCA
+*/
+#define log2MAX_V 22
+struct LCA
+{
+	ll V, E;
+	ll p[log2MAX_V][MAX_V];
+	vector<ll> d, g[MAX_V];
+	LCA(ll V, ll E) :V(V), E(E), d(V + 1) {}
+	void dfs(ll x, ll par)
+	{
+		for (auto y : g[x])
+			if (y != par)
+			{
+				p[0][y] = x;
+				d[y] = d[x] + 1;
+				dfs(y, x);
+			}
+	}
+	void make(ll root)
+	{
+		dfs(root, 0);
+		for (int i = 1; i < log2(V) + 1; i++)
+			for (int j = 1; j <= V; j++)
+				p[i][j] = p[i - 1][p[i - 1][j]];
+	}
+	ll lca(ll u, ll v)
+	{
+		if (d[u] < d[v]) swap(u, v);
+		ll diff = d[u] - d[v];
+		for (int i = 0; i < log2(V) + 1; i++)
+			if (diff & (1ll << i)) u = p[i][u];
+		if (u == v) return u;
+		for (int i = log2(V); i >= 0; i--)
+			if (p[i][u] != p[i][v]) u = p[i][u], v = p[i][v];
+		return p[0][u];
+	}
+};
+
+/*
+Merge Sort Tree
+*/
+#define MAX_N 100005
+struct MergeSortTree
+{
+	vector<ll> a;
+	vector<ll> tree[4 * MAX_N];
+	void init(ll x, ll s, ll e)
+	{
+		if (s == e) tree[x].push_back(a[s]);
+		else
+		{
+			init(x * 2, s, (s + e) / 2);
+			init(x * 2 + 1, (s + e) / 2 + 1, e);
+			auto& l = tree[x * 2], & r = tree[x * 2 + 1];
+			tree[x].resize(l.size() + r.size());
+			merge(l.begin(), l.end(), r.begin(), r.end(), tree[x].begin());
+		}
+	}
+	ll query(ll x, ll s, ll e, ll l, ll r, ll v)
+	{
+		if (r < s || e < l) return 0;
+		if (l <= s && e <= r)
+			return lower_bound(tree[x].begin(), tree[x].end(), v) - tree[x].begin();
+		ll L = query(x * 2, s, (s + e) / 2, l, r, v);
+		ll R = query(x * 2 + 1, (s + e) / 2 + 1, e, l, r, v);
+		return L + R; // index of v
+	}
+};
+
+/*
+Fenwick Tree
+*/
+
+struct FenwickTree {
+    int n;
+    vector<long long> tree;
+
+    FenwickTree(int n) : n(n), tree(n + 1, 0) {}
+
+    void update(int idx, long long delta) {
+        while (idx <= n) {
+            tree[idx] += delta;
+            idx += (idx & -idx);
+        }
+    }
+
+    long long query(int idx) {
+        long long sum = 0;
+        while (idx > 0) {
+            sum += tree[idx];
+            idx -= (idx & -idx);
+        }
+        return sum;
+    }
+
+    long long range_query(int left, int right) {
+        if (left > right) return 0;
+        return query(right) - query(left - 1);
+    }
+};
+
+
+/*
+Sparse Table
+*/
+class SparseTable {
+private:
+    int n;
+    int K;
+    vector<vector<int>> st;
+    vector<int> lg;
+
+public:
+    SparseTable(const vector<int>& arr) {
+        n = arr.size();
+        K = __lg(n) + 1;
+        
+        st.assign(n, vector<int>(K));
+        lg.assign(n + 1, 0);
+
+        for (int i = 2; i <= n; i++) {
+            lg[i] = lg[i / 2] + 1;
+        }
+
+        for (int i = 0; i < n; i++) {
+            st[i][0] = arr[i];
+        }
+
+        for (int j = 1; j < K; j++) {
+            for (int i = 0; i + (1 << j) <= n; i++) {
+                st[i][j] = min(st[i][j - 1], st[i + (1 << (j - 1))][j - 1]);
+            }
+        }
+    }
+
+    int query(int L, int R) {
+        int j = lg[R - L + 1]; 
+        return min(st[L][j], st[R - (1 << j) + 1][j]);
+    }
+};
+
+/*
+CCW
+*/
+ll ccw(pair<ll, ll> A, pair<ll, ll> B, pair<ll, ll> C)
+{
+	return A.first * B.second + B.first * C.second + C.first * A.second - A.first * C.second - B.first * A.second - C.first * B.second;
+}
+
+/*
+360 degree sort
+*/
+pair<ll, ll> operator - (const pair<ll, ll> a, const pair<ll, ll> b) { return { a.first - b.first, a.second - b.second }; }
+pair<ll, ll> F;
+bool cmp(pair<ll, ll> a, pair<ll, ll> b)
+{
+	a = a - F; b = b - F;
+	if ((a.first < 0) != (b.first < 0)) return a.first > b.first;
+	if (a.first == 0 && b.first == 0) return a.second < b.second;
+	return a.second * b.first < b.second* a.first;
+}
+
+/*
+Convex Hull
+*/
+struct ConvexHull
+{
+	vector<pair<ll, ll>> v, L, R;
+	ConvexHull(ll N) :v(N) {}
+	void TwoHalf()
+	{
+		sort(v.begin(), v.end());
+		for (auto i : v)
+		{
+			while (L.size() >= 2 && ccw(L[L.size() - 2], L[L.size() - 1], i) <= 0) L.pop_back();
+			L.push_back(i);
+			while (R.size() >= 2 && ccw(R[R.size() - 2], R[R.size() - 1], i) >= 0) R.pop_back();
+			R.push_back(i);
+		}
+		v.clear();
+		for (ll i = 0; i < L.size() - 1; i++) v.push_back(L[i]);
+		for (ll i = R.size() - 1; i > 0; i--) v.push_back(R[i]);
+	}
+};
+
+/*
+Rotating Calipers
+*/
+#define pll pair<ll, ll>
+pll operator + (const pll a, const pll b) { return { a.first + b.first, a.second + b.second }; }
+pll operator - (const pll a, const pll b) { return { a.first - b.first, a.second - b.second }; }
+struct RC
+{
+	ll dist(const pll a, const pll b)
+	{
+		return (a.first - b.first) * (a.first - b.first) + (a.second - b.second) * (a.second - b.second);
+	}
+	ll ccw(const pll a, const pll b, const pll c)
+	{
+		return a.first * b.second + b.first * c.second + c.first * a.second - a.first * c.second - b.first * a.second - c.first * b.second;
+	}
+	ll N;
+	vector<pair<ll, ll>> v, L, R;
+	RC(ll N) :N(N), v(N) {}
+	void TwoHalf()
+	{
+		sort(v.begin(), v.end());
+		for (auto i : v)
+		{
+			while (L.size() >= 2 && ccw(L[L.size() - 2], L[L.size() - 1], i) <= 0) L.pop_back();
+			L.push_back(i);
+			while (R.size() >= 2 && ccw(R[R.size() - 2], R[R.size() - 1], i) >= 0) R.pop_back();
+			R.push_back(i);
+		}
+		v.clear();
+		for (ll i = 0; i < L.size() - 1; i++) v.push_back(L[i]);
+		for (ll i = R.size() - 1; i > 0; i--) v.push_back(R[i]);
+	}
+	ll go() // v should be convex hull
+	{
+		ll ret = 0;
+		for (int i = 0, r = 0; i < N; i++)
+		{
+			// A, B, D - C + B
+			while (r < N * 2 && ccw(v[i], v[(i + 1) % N], v[(i + 1) % N] + v[(r + 1) % N] - v[r % N]) >= 0)
+			{
+				ret = max(ret, dist(v[i], v[r % N])); // A, D
+				r++;
+			}
+			ret = max(ret, dist(v[i], v[r % N]));
+		}
+		return ret;
+	}
+};
+
+/*
+Point in Convex Polygon
+*/
+bool isInCP(vector<pair<int, int>>& v, pair<int, int> pt) // v which is convex hull is sorted based on counter clock wise 
+{
+	int vs = v.size();
+	if (vs == 0) return false;
+	if (vs == 1) return v[0] == pt;
+	if (vs == 2) return ccw(v[0], v[1], pt) == 0 && v[0] <= pt && pt <= v[1];
+	if (ccw(v[vs - 1], v[0], pt) < 0 || ccw(v[0], v[1], pt) < 0) return 0;
+	int lo = 1, hi = vs - 1, res = vs - 1;
+	while (lo <= hi)
+	{
+		int mid = (lo + hi) / 2;
+		if (ccw(v[0], v[mid], pt) >= 0) lo = mid + 1;
+		else
+		{
+			res = mid;
+			hi = mid - 1;
+		}
+	}
+	return ccw(v[res - 1], v[res], pt) >= 0;
+}
+
+/*
+Bellman-Ford
+*/
+#define MAX_V 100005
+#define INF 1e9
+struct BellmanFord
+{
+	ll V;
+	vector<pair<ll, ll>> g[MAX_V];
+	BellmanFord(ll V) : V(V) {}
+	vector<ll> bellmanFord(ll src) // if there is a negative cycle, returns empty vector.
+	{
+		vector<ll> upper(V, INF);
+		upper[src] = 0;
+		bool updated = 0;
+		for (int iter = 0; iter < V; iter++)
+		{
+			updated = 0;
+			for (int here = 0; here < V; here++)
+				for (auto i : g[here])
+				{
+					auto [there, cost] = i;
+					if (upper[there] > upper[here] + cost)
+					{
+						upper[there] = upper[here] + cost;
+						updated = 1;
+					}
+				}
+			if (!updated) break;
+		}
+		if (updated) upper.clear(); // there is negative cycle.
+		return upper;
+	}
+};
+
+/*
+Eulerian Circuit
+*/
+#define MAX_V 1005
+struct Eulerian
+{
+	ll V, start;
+	ll g[MAX_V][MAX_V]; // adjacancy matrix
+	vector<ll> res;
+	bool check()
+	{
+		for (int i = 1; i <= V; i++)
+		{
+			ll cnt = 0;
+			for (int j = 1; j <= V; j++) cnt += g[i][j];
+			if (cnt & 2) return 0;
+			if (!start && cnt) start = i;
+		}
+	}
+	void dfs(ll x)
+	{
+		for (int y = 1; y <= V; y++)
+		{
+			if (g[x][y])
+			{
+				g[x][y]--;
+				g[y][x]--;
+				dfs(y);
+			}
+		}
+		res.push_back(x);
+	}
+};
+
+/*
+Bipartitie Matching
+*/
+#define MAX_V 1005
+struct Bipartitie
+{
+	ll V, res = 0;
+	vector<ll> g[MAX_V], A, B;
+	vector<bool> v;
+	Bipartitie(ll V) : V(V), A(V + 1, -1), B(V + 1, -1), v(V + 1, 0) {};
+	bool dfs(ll a)
+	{
+		v[a] = 1;
+		for (auto b : g[a])
+			if (B[b] == -1 || (!v[B[b]] && dfs(B[b])))
+			{
+				A[a] = b;
+				B[b] = a;
+				return 1;
+			}
+		return 0;
+	}
+	void go()
+	{
+		for (int i = 1; i <= V; i++)
+			if (A[i] == -1)
+			{
+				fill(v.begin(), v.end(), 0);
+				if (dfs(i)) res++;
+			}
+	}
+};
+
+/*
+Edmonds-Karp
+*/
+struct EdmondsKarp
+{
+	struct edge_t { int v, c, r; }; // next destination, capacity, index of reverse node
+	vector<vector<edge_t>> gph;
+	vector<int> dst, prv, idx;
+	EdmondsKarp(int n) : gph(n + 1), dst(n + 1), prv(n + 1), idx(n + 1) {} // '+1' for 1-base nodes
+	void add_edge(int s, int e, int c1, int c2 = 0)
+	{
+		gph[s].push_back({ e, c1, (int)gph[e].size() });
+		gph[e].push_back({ s, c2, (int)gph[s].size() - 1 }); // reverse edge
+	}
+	int augment(int s, int t)
+	{
+		fill(dst.begin(), dst.end(), -1);
+		queue<int> que;
+		que.push(s); dst[s] = 0;
+		while (!que.empty())
+		{
+			int v = que.front(); que.pop();
+			for (int i = 0; i < gph[v].size(); i++)
+			{
+				const auto& e = gph[v][i];
+				if (e.c > 0 && dst[e.v] == -1)
+				{
+					que.push(e.v); dst[e.v] = dst[v] + 1;
+					prv[e.v] = v; idx[e.v] = i;
+				}
+			}
+		}
+		if (dst[t] == -1) return 0;
+		int flow = 1e9;
+		for (int i = t; i != s; i = prv[i])
+		{
+			const auto& e = gph[prv[i]][idx[i]];
+			flow = min(flow, e.c);
+		}
+		for (int i = t; i != s; i = prv[i])
+		{
+			auto& e = gph[prv[i]][idx[i]];
+			e.c -= flow;
+			gph[e.v][e.r].c += flow;
+		}
+		return flow;
+	}
+	int run(int s, int t)
+	{
+		int flow = 0, path = 0;
+		while (path = augment(s, t)) flow += path;
+		return flow;
+	}
+};
+
+/*
+Dinic
+*/
+struct Dinic
+{
+	struct edge_t { int v, c, r; };
+	int n;
+	vector<vector<edge_t>> g;
+	vector<int> lv, idx;
+	Dinic(int n) :n(n), g(n + 1), lv(n + 1), idx(n + 1) {}
+	void add_edge(int s, int e, int c1, int c2 = 0)
+	{
+		g[s].push_back({ e, c1, (int)g[e].size() });
+		g[e].push_back({ s, c2, (int)g[s].size() - 1 });
+	}
+	bool bfs(int s, int t)
+	{
+		fill(lv.begin(), lv.end(), 0);
+		queue<int> que;
+		que.push(s); lv[s] = 1;
+		while (!que.empty())
+		{
+			int v = que.front(); que.pop();
+			for (const auto& e : g[v])
+				if (!lv[e.v] && e.c != 0) que.push(e.v), lv[e.v] = lv[v] + 1;
+		}
+		return lv[t];
+	}
+	int dfs(int v, int t, int f = 1e9)
+	{
+		if (v == t || f == 0) return f;
+		for (int& i = idx[v]; i < g[v].size(); i++)
+		{
+			auto& e = g[v][i];
+			if (lv[e.v] != lv[v] + 1 || e.c == 0) continue;
+			int now = dfs(e.v, t, min(f, e.c));
+			if (now == 0) continue;
+			e.c -= now;
+			g[e.v][e.r].c += now;
+			return now;
+		}
+		return 0;
+	}
+	int run(int s, int t)
+	{
+		int flow = 0, path = 0;
+		while (bfs(s, t))
+		{
+			fill(idx.begin(), idx.end(), 0);
+			while (path = dfs(s, t)) flow += path;
+		}
+		return flow;
+	}
+};
+
+/*
+Minimum Cost Maximum Flow
+*/
+struct MCMF
+{
+	const int INF = 1e9;
+	struct edge_t { int v, r, c, d; }; // next destination, index of reverse node, capacity, cost
+	vector<vector<edge_t>> g;
+	vector<int> in, prv, idx;
+	vector<int> dst;
+	MCMF(int n) : g(n), in(n), prv(n), idx(n), dst(n) {}
+	void add_edge(int s, int e, int c, int d)
+	{
+		g[s].push_back({ e, (int)g[e].size(), c, d });
+		g[e].push_back({ s, (int)g[s].size() - 1, 0, -d });
+	}
+	bool augment(int s, int t)
+	{
+		fill(in.begin(), in.end(), 0);
+		fill(dst.begin(), dst.end(), INF);
+		queue<int> que; 
+		que.push(s); dst[s] = 0; in[s] = 1;
+		while (!que.empty())
+		{
+			int v = que.front(); que.pop(); in[v] = 0;
+			for (int i = 0; i < g[v].size(); i++)
+			{
+				const auto& e = g[v][i];
+				if (e.c != 0 && dst[e.v] > dst[v] + e.d)
+				{
+					dst[e.v] = dst[v] + e.d;
+					prv[e.v] = v; idx[e.v] = i;
+					if (!in[e.v]) in[e.v] = 1, que.push(e.v);
+				}
+			}
+		}
+		return dst[t] < INF;
+	}
+	pair<int, int> minimum_cost_flow(int s, int t)
+	{
+		int flow = 0, cost = 0;
+		while (augment(s, t))
+		{
+			int path = INF;
+			for (int i = t; i != s; i = prv[i]) path = min(path, g[prv[i]][idx[i]].c);
+			flow += path; cost += path * dst[t];
+			for (int i = t; i != s; i = prv[i])
+			{
+				auto& e = g[prv[i]][idx[i]];
+				e.c -= path; g[i][e.r].c += path;
+			}
+		}
+		return { flow, cost };
+	}
+};
+
+/*
+Centroid Decomposition
+*/
+struct centroid
+{
+	int N;
+	vector<int> v, sz;
+	vector<vector<pair<int, int>>> g;
+	centroid(int N) : N(N), v(N + 1), sz(N + 1), g(N + 1) {}
+	int get_sz(int x, int p = -1)
+	{
+		sz[x] = 1;
+		for (auto [y, w] : g[x])
+			if (y != p && !v[y]) sz[x] += get_sz(y, x);
+		return sz[x];
+	}
+	int get_cent(int x, int p, int SZ)
+	{
+		for (auto [y, w] : g[x])
+			if (y != p && !v[y] && sz[y] * 2 > SZ) return get_cent(y, x, SZ);
+		return x;
+	}
+	void dnc(int x)
+	{
+		int cent = get_cent(x, -1, get_sz(x));
+		// do something
+		v[cent] = 1;
+		for (auto [y, w] : g[cent])
+			if (!v[y]) dnc(y);
+		return;
+	}
+};
+
+/*
+Seive of Eratosthenes
+*/
+struct Eratosthenes
+{
+	ll N;
+	vector<bool> notP;
+	Eratosthenes(ll N) : N(N), notP(N + 1, 0) {}
+	void go()
+	{
+		for (ll i = 2; i <= N; i++)
+			for (ll j = i * i; j <= N; j += i) // be careful about integer-overflow
+				notP[j] = 1;
+	}
+};
+
+/*
+Euler Phi
+*/
+ll phi(ll n)
+{
+	ll ret = n;
+	for (ll p = 2; p * p <= n; p++)
+	{
+		if (n % p) continue;
+		while (n % p == 0) n /= p;
+		ret = ret * (p - 1) / p;
+	}
+	if (n > 1) ret = ret * (n - 1) / n; // n is prime
+	return ret;
+}
+
+/*
+Modular Inverse
+*/
+#define MOD 998244353
+struct ModInv
+{
+	ll pow(ll a, ll x)
+	{
+		if (x == 0) return 1ll;
+		ll ret = pow(a, x / 2);
+		ret = ret * ret % MOD;
+		if (x % 2) ret = ret * a % MOD;
+		return ret;
+	}
+	ll FlT(ll a) { return pow(a, MOD - 2); } // MOD should be prime number
+};
+
+
+/*
+Extended Euclid
+*/
+
+/*
+Chinese Remainder Theorem
+*/
+int chineseRemainderTheorem(const std::vector<int>& num, const std::vector<int>& rem) {
+    int k = num.size();
+    int prod = 1;
+    for (int i = 0; i < k; i++) {
+        prod *= num[i];
+    }
+
+    int result = 0;
+
+    for (int i = 0; i < k; i++) {
+        int pp = prod / num[i];
+        result += rem[i] * modInverse(pp, num[i]) * pp;
+    }
+
+    return result % prod;
+}
+
+
+/*
+Catalan Number
+*/
+vector<ll> Catalan(ll n)
+{
+	vector<ll> c(n + 1);
+	c[0] = 1;
+	for (int i = 1; i <= n; i++) 
+		for (int j = 0; j < i; j++) c[i] += c[j] * c[i - 1 - j];
+	return c;
+}
+
+/*
+Binomial Coefficient (N^2)
+*/
+vector<vector<ll>> Combination(int n)
+{
+	vector<vector<ll>> c(n + 1, vector<ll>(n + 1));
+	for (int i = 0; i <= n; i++)
+	{
+		c[i][0] = 1;
+		for (int j = 1; j <= i; j++) c[i][j] = c[i - 1][j - 1] + c[i - 1][j];
+	}
+	return c;
+}
+
+/*
+Lucas Theorm (Binomial Coefficient)
+*/
+struct Lucas
+{
+	//init: O(P + logP), query: O(logP)
+	const size_t P;
+	vector<ll> fac, inv;
+	ll Pow(ll a, ll b)
+	{
+		ll ret = 1;
+		for (; b; b >>= 1, a = a * a % P) if (b & 1) ret = ret * a % P;
+		return ret;
+	}
+	Lucas(size_t P) : P(P), fac(P), inv(P)
+	{
+		fac[0] = 1;
+		for (int i = 1; i < P; i++) fac[i] = fac[i - 1] * i % P;
+		inv[P - 1] = Pow(fac[P - 1], P - 2);
+		for (int i = P - 2; ~i; i--) inv[i] = inv[i + 1] * (i + 1) % P;
+	}
+	ll small(ll n, ll r) const
+	{
+		if (n < r) return 0;
+		return fac[n] * inv[r] % P * inv[n - r] % P;
+	}
+	ll calc(ll n, ll r) const
+	{
+		if (n < r || n < 0 || r < 0) return 0;
+		if (!n || !r || n == r) return 1;
+		return small(n % P, r % P) * calc(n / P, r / P) % P;
+	}
+};
+
+/*
+Rabin - Karp
+*/
+template<ll P, ll M> struct Hashing
+{
+	vector<ll> H, B;
+	void build(const string& S)
+	{
+		H.resize(S.size() + 1);
+		B.resize(S.size() + 1);
+		B[0] = 1;
+		for (int i = 1; i <= S.size(); i++) H[i] = (H[i - 1] * P + S[i - 1]) % M;
+		for (int i = 1; i <= S.size(); i++) B[i] = B[i - 1] * P % M;
+		// H[i] := hash(S[0]...S[i-1])
+	}
+	ll get(int s, int e) // get(s, e) := hash(S[s-1]...S[e-1])
+	{
+		ll res = (H[e] - H[s - 1] * B[e - s + 1]) % M;
+		return res >= 0 ? res : res + M;
+	}
+};
+
+/*
+Trie
+*/
+struct Trie
+{
+	Trie* ch[26];
+	int key;
+	Trie()
+	{
+		fill(ch, ch + 26, nullptr);
+		key = -1;
+	}
+	~Trie()
+	{
+		for (int i = 0; i < 26; i++) delete ch[i];
+	}
+	void insert(const char* s, int id)
+	{
+		if (*s == 0) { key = id; return; }
+		if (!ch[*s - 'a']) ch[*s - 'a'] = new Trie();
+		ch[*s - 'a']->insert(s + 1, id);
+	}
+	int find(const char* s)
+	{
+		if (*s == 0) return key;
+		if (!ch[*s - 'a']) return -1;
+		else return ch[*s - 'a']->find(s + 1);
+	}
+};
+
+/*
+KMP
+*/
+vector<int> GetFail(const string& p)
+{
+	int m = p.size();
+	vector<int> fail(m);
+	fail[0] = 0;
+	for (int i = 1, j = 0; i < m; i++)
+	{
+		while (j > 0 && p[i] != p[j]) j = fail[j - 1];
+		if (p[i] == p[j]) fail[i] = ++j;
+	}
+	return fail;
+}
+vector<int> KMP(const string& s, const string& p)
+{
+	int n = s.size(), m = p.size();
+	vector<int> fail = GetFail(p), res;
+	for (int i = 0, j = 0; i < n; i++)
+	{
+		while (j > 0 && s[i] != p[j]) j = fail[j - 1];
+		if (s[i] == p[j])
+		{
+			if (j + 1 == m) res.push_back(i - m + 1), j = fail[j];
+			else j++;
+		}
+	}
+	return res;
+}
+
+/*
+Manacher
+*/
+struct manacher
+{
+	string s; // input string
+	string ss = ""; // preprocessed string
+	vector<ll> ma; // ma[i] := length of palindrome which center is i
+	ll r = -1, c = -1; // center of previous palindrome, radius of previous palindrome
+	manacher(string& s) : s(s), ma(s.size() * 2 + 2, 0) {}
+	void go()
+	{
+		for (char cc : s)
+		{
+			ss.push_back('#'); // dummy character for even length palindrome
+			ss.push_back(cc);
+		}
+		ss.push_back('#');
+		for (ll i = 0; i < ss.size(); i++)
+		{
+			if (i <= r) ma[i] = min(r - i, ma[2 * c - i]); // get ma[i]
+			while (i + ma[i] + 1 < ss.size() && i - ma[i] - 1 >= 0 && ss[i + ma[i] + 1] == ss[i - ma[i] - 1])
+				ma[i]++; // update ma[i]
+			if (i + ma[i] > r) // update c and r
+			{
+				c = i;
+				r = i + ma[i];
+			}
+		}
+	}
+	// real index of palindrome(0-base): [(i-ma[i]+1)/2, (i+ma[i]-1)/2]
+};
+
+/*
+Suffix Array
+*/
+struct SuffixArray
+{
+	int n;
+	string s;
+	vector<int> sfx, g, ng, cnt, idx; // sfx[i] := s에서 사전 순 i번째 접미사의 첫 글자 위치
+	vector<int> rev, lcp; // lcp[i] := suffix array상에서 i번째 접미사와 i-1번째 접미사의 Longest Common Prefix
+	SuffixArray(string& str)
+	{
+		s = str;
+		n = str.length();
+		sfx.resize(n + 1);
+		g.resize(2 * n + 1);
+		ng.resize(2 * n + 1);
+		cnt.resize(n + 1);
+		idx.resize(n + 1);
+
+		rev.resize(n + 1);
+		lcp.resize(n + 1);
+	}
+	void getsfx()
+	{
+		s = ' ' + s;
+		vector<int> tmp;
+		for (int i = 1; i <= n; i++)
+		{
+			sfx[i] = i; // neccessary?
+			tmp.push_back(s[i]);
+		}
+		sort(tmp.begin(), tmp.end());
+		tmp.erase(unique(tmp.begin(), tmp.end()), tmp.end());
+		for (int i = 1; i <= n; i++)
+			g[i] = lower_bound(tmp.begin(), tmp.end(), s[i]) - tmp.begin() + 1;
+		for (int i = n + 1; i <= 2 * n; i++) g[i] = 0;
+		for (int t = 1; t < n; t *= 2)
+		{
+			// counting sort by g[i+t] for stable sorting
+			for (int i = 0; i <= n; i++) cnt[i] = 0;
+			for (int i = 1; i <= n; i++) cnt[g[i + t]]++;
+			for (int i = 1; i <= n; i++) cnt[i] += cnt[i - 1];
+			for (int i = n; i >= 1; i--) idx[cnt[g[i + t]]--] = i;
+			// counting sort by g[i] for stable sorting
+			for (int i = 0; i <= n; i++) cnt[i] = 0;
+			for (int i = 1; i <= n; i++) cnt[g[i]]++;
+			for (int i = 1; i <= n; i++) cnt[i] += cnt[i - 1];
+			for (int i = n; i >= 1; i--) sfx[cnt[g[idx[i]]]--] = idx[i];
+			// prepare for next update
+			ng[sfx[1]] = 1;
+			for (int i = 2; i <= n; i++)
+				ng[sfx[i]] = ng[sfx[i - 1]] + (g[sfx[i - 1]] < g[sfx[i]] || (g[sfx[i - 1]] == g[sfx[i]] && g[sfx[i - 1] + t] < g[sfx[i] + t]));
+			for (int i = 1; i <= n; i++) g[i] = ng[i];
+		}
+	}
+	void getlcp()
+	{
+		for (int i = 1; i <= n; i++) rev[sfx[i]] = i;
+		int now = 0;
+		for (int i = 1; i <= n; i++)
+		{
+			if (rev[i] - 1 >= 1)
+			{
+				while (s[i + now] == s[sfx[rev[i] - 1] + now]) now++;
+				lcp[rev[i]] = now;
+			}
+			if (now) now--;
+		}
+	}
+};
+
+/*
+Union Find
+*/
+struct UF
+{
+	int n;
+	vector<int> p;
+	UF(int n) : n(n), p(n + 1, -1) {}
+	int find(int x)
+	{
+		if (p[x] < 0) return x;
+		return p[x] = find(p[x]); 
+	}
+	void merge(int a, int b)
+	{
+		a = find(a); b = find(b);
+		if (a == b) return;
+		p[b] = a;
+	}
+};
+
+/*
+Ternary Search
+*/
+double TernarySearch(double l, double r)
+{
+	while (l + 1e-9 <= r)
+	{
+		double m1 = (2 * l + r) / 3;
+		double m2 = (l + 2 * r) / 3;
+		if (f(m1) > f(m2)) l = m1; // find min
+		else r = m2;
+	}
+	return l;
+}
+ll TernarySearch(ll l, ll r)
+{
+	while (l + 3 <= r)
+	{
+		ll m1 = (2 * l + r) / 3;
+		ll m2 = (l + 2 * r) / 3;
+		if (f(m1) > f(m2)) l = m1; // find min
+		else r = m2;
+	}
+	ll ret = INF;
+	for (int i = l; i <= r; i++) ret = min(ret, f(i));
+	return ret;
+}
+
+/*
+Power with Divide and Conquer
+*/
+ll pow(ll a, ll x)
+{
+	if (x == 0) return 1ll;
+	ll ret = pow(a, x / 2);
+	ret = ret * ret % MOD;
+	if (x % 2) ret = ret * a % MOD;
+	return ret;
+}
+
+/*
+Fibonacci Matrix
+*/
+struct FiboMat
+{
+	struct matrix22 { ll f[2][2]; };
+	matrix22 mul(matrix22 a, matrix22 b)
+	{
+		matrix22 c;
+		c.f[0][0] = a.f[0][0] * b.f[0][0] + a.f[0][1] * b.f[1][0];
+		c.f[0][1] = a.f[0][0] * b.f[0][1] + a.f[0][1] * b.f[1][1];
+		c.f[1][0] = a.f[1][0] * b.f[0][0] + a.f[1][1] * b.f[1][0];
+		c.f[1][1] = a.f[1][0] * b.f[0][1] + a.f[1][1] * b.f[1][1];
+		return c;
+	}
+	matrix22 pow(matrix22 a, int n)
+	{
+		if (n > 1)
+		{
+			a = pow(a, n / 2);
+			a = mul(a, a);
+			if (n % 2 == 1)
+			{
+				matrix22 f1 = { 1, 1, 1, 0 };
+				a = mul(a, f1);
+			}
+		}
+		return a;
+	}
+	ll fibo(int n)
+	{
+		matrix22 a = { 1, 1, 1, 0 };
+		a = pow(a, n);
+		return a.f[0][1];
+	}
+};
+
+/*
+Convex Hull Trick
+*/
+struct CHT
+{
+	struct LinearFunc // f(x)=ax+b, x>=s
+	{
+		ll a, b;
+		double s; // starting point of segment
+		LinearFunc() : LinearFunc(1, 0) {}
+		LinearFunc(ll a1, ll b1) : a(a1), b(b1), s(0) {}
+	};
+	// return x coordinate of intersection of line f and g
+	double cross(LinearFunc& f, LinearFunc& g) { return (g.b - f.b) / (f.a - g.a); }
+	int N, top = 0;
+	vector<LinearFunc> f;
+	CHT(int N) : N(N), f(N) {}
+	void addLine(LinearFunc g)
+	{
+		while (top > 0)
+		{
+			g.s = cross(f[top - 1], g);
+			if (g.s > f[top - 1].s) break;
+			top--; // pop
+		}
+		f[top++] = g; // add
+	}
+	int find(int x) // find segment which includes x coordinate
+	{
+		int fpos = top - 1;
+		if (x < f[top - 1].s)
+		{
+			int l = 0, r = top - 1;
+			while (l <= r)
+			{
+				int mid = (l + r) / 2;
+				if (x >= f[mid].s)
+				{
+					l = mid + 1;
+					fpos = mid;
+				}
+				else r = mid - 1;
+			}
+		}
+		return fpos;
+	}
+};
+
+
+
+//-------------------------------------------------------------------------
+
+// 6.3 Bit Twiddling Hack
+int __builtin_clz(int x);// number of leading zero
+int __builtin_ctz(int x);// number of trailing zero
+int __builtin_clzll(long long x);// number of leading zero
+int __builtin_ctzll(long long x);// number of trailing zero
+int __builtin_popcount(int x);// number of 1-bits in x
+int __builtin_popcountll(long long x);// number of 1-bits in x
+lsb(n): (n & -n); // last bit (smallest)
+floor(log2(n)): 31 - __builtin_clz(n | 1);
+floor(log2(n)): 63 - __builtin_clzll(n | 1);
+
+
+// compute next perm. ex) 00111, 01011, 01101, 01110, 10011, 10101..
+long long next_perm(long long v){
+long long t = v | (v-1);
+return (t + 1) | (((~t & -~t) - 1) >> (__builtin_ctz(v) + 1));
+}
+
+
+// vector resizing
+vector<vector<int>> vec;
+vec.resize(rows, vector<int>(cols, 0));
