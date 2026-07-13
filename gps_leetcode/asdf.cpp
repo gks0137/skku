@@ -4,20 +4,20 @@ using namespace std;
 
 class Solution {
 public:
-    int findTheWinner(int n, int k) {
-        deque<int> dq;
-        for (int i = 1; i <= n; i++) {
-            dq.push_back(i);
+    string reverseWords(string s) {
+        stringstream ss(s);
+        string word;
+        stack<string> st;
+        while (ss >> word) {
+            st.push(word);
         }
-        n--;
-        while (n--) {
-            for (int i = 0; i < k - 1; i++) {
-                dq.push_back(dq.front());
-                dq.pop_front();
-            }
-            dq.pop_front();
+        string ans;
+        while (!st.empty()) {
+            ans += st.top() + " ";
+            st.pop();
         }
-        return dq.front();
+        ans.pop_back();
+        return ans;
     }
 };
 
