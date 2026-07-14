@@ -4,20 +4,19 @@ using namespace std;
 
 class Solution {
 public:
-    string reverseWords(string s) {
-        stringstream ss(s);
-        string word;
-        stack<string> st;
-        while (ss >> word) {
-            st.push(word);
+    vector<int> twoSum(vector<int>& numbers, int target) {
+        int l = 0, r = numbers.size() - 1;
+        while (l < r) {
+            int sum = numbers[l] + numbers[r];
+            if (sum == target) {
+                return {l + 1, r + 1};
+            } else if (sum < target) {
+                l++;
+            } else {
+                r--;
+            }
         }
-        string ans;
-        while (!st.empty()) {
-            ans += st.top() + " ";
-            st.pop();
-        }
-        ans.pop_back();
-        return ans;
+        return {l + 1, r + 1};
     }
 };
 
