@@ -4,19 +4,32 @@ using namespace std;
 
 class Solution {
 public:
-    vector<int> twoSum(vector<int>& numbers, int target) {
-        int l = 0, r = numbers.size() - 1;
-        while (l < r) {
-            int sum = numbers[l] + numbers[r];
-            if (sum == target) {
-                return {l + 1, r + 1};
-            } else if (sum < target) {
-                l++;
-            } else {
-                r--;
-            }
+    vector<int> findRedundantConnection(vector<vector<int>>& edges) {
+        int n = edges.size();
+        vector<int> parent(n + 1);
+        for (int i = 1; i <= n; ++i) {
+            parent[i] = i;
         }
-        return {l + 1, r + 1};
+
+        function<int(int)> find = [&](int x) {
+            if (parent[x] != x) {
+                parent[x] = find(parent[x]);
+            }
+            return parent[x];
+        };
+        
+        vector<int> result;
+
+        for (const auto& edge : edges) {
+            int u = edge[0], v = edge[1];
+            int pu = find(u), pv = find(v);
+            if (pu == pv) {
+                result = edge;
+            }
+            parent[pu] = pv;
+        }
+
+        return result;
     }
 };
 
@@ -27,7 +40,9 @@ int main() {
     Solution sol;
 
     
-
+    vector<vector<int>> edges = {{1, 2}, {1, 3}, {2, 3}};
+    vector<int> result = sol.findRedundantConnection(edges);
+    cout << "[" << result[0] << ", " << result[1] << "]" << endl;
 
 
 
