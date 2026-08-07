@@ -10,43 +10,39 @@ struct TreeNode {
     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
 };
 
-class Solution {
-public:
-    int findKthLargest(vector<int>& nums, int k) {
-        // quick select algorithm
-        int left = 0, right = nums.size() - 1;
-        k = nums.size() - k; // convert to 0-based index for kth smallest
-
-        while (left < right) {
-            int pivotIndex = partition(nums, left, right);
-            if (pivotIndex == k) {
-                return nums[pivotIndex];
-            } else if (pivotIndex < k) {
-                left = pivotIndex + 1;
-            } else {
-                right = pivotIndex - 1;
-            }
-        }
-
-        return nums[left];
-    }
-
-private:
-    int partition(vector<int>& nums, int left, int right) {
-        int pivot = nums[right];
-        int i = left - 1;
-
-        for (int j = left; j < right; j++) {
-            if (nums[j] < pivot) {
-                i++;
-                swap(nums[i], nums[j]);
-            }
-        }
-        swap(nums[i + 1], nums[right]);
-        return i + 1;
-    }
+struct ListNode {
+    int val;
+    ListNode *next;
+    ListNode() : val(0), next(nullptr) {}
+    ListNode(int x) : val(x), next(nullptr) {}
+    ListNode(int x, ListNode *next) : val(x), next(next) {}
 };
 
+class Solution {
+public:
+    int uniquePathsWithObstacles(vector<vector<int>>& obstacleGrid) {
+        int n = obstacleGrid.size(), m = obstacleGrid[0].size();
+        if (obstacleGrid[0][0] == 1 || obstacleGrid[n - 1][m - 1] == 1) {
+            return 0;
+        }
+        obstacleGrid[0][0] = 1;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (obstacleGrid[i][j] == 1 && (i != 0 || j != 0)) {
+                    obstacleGrid[i][j] = 0;
+                    continue;
+                }
+                if (i > 0) {
+                    obstacleGrid[i][j] += obstacleGrid[i - 1][j];
+                }
+                if (j > 0) {
+                    obstacleGrid[i][j] += obstacleGrid[i][j - 1];
+                }
+            }
+        }
+        return obstacleGrid[n - 1][m - 1];
+    }
+};
 
 int main() {
     ios::sync_with_stdio(false);
