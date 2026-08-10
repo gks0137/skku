@@ -18,31 +18,31 @@ struct ListNode {
     ListNode(int x, ListNode *next) : val(x), next(next) {}
 };
 
+
 class Solution {
 public:
-    int uniquePathsWithObstacles(vector<vector<int>>& obstacleGrid) {
-        int n = obstacleGrid.size(), m = obstacleGrid[0].size();
-        if (obstacleGrid[0][0] == 1 || obstacleGrid[n - 1][m - 1] == 1) {
-            return 0;
-        }
-        obstacleGrid[0][0] = 1;
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < m; j++) {
-                if (obstacleGrid[i][j] == 1 && (i != 0 || j != 0)) {
-                    obstacleGrid[i][j] = 0;
-                    continue;
-                }
-                if (i > 0) {
-                    obstacleGrid[i][j] += obstacleGrid[i - 1][j];
-                }
-                if (j > 0) {
-                    obstacleGrid[i][j] += obstacleGrid[i][j - 1];
-                }
+    int minSubArrayLen(int target, vector<int>& nums) {
+        int n = nums.size();
+        int left = 0, right = 0;
+        int sum = 0;
+        int ans = INT_MAX;
+        while (right < n) {
+            sum += nums[right];
+            while (sum >= target) {
+                ans = min(ans, right - left + 1);
+                sum -= nums[left];
+                left++;
             }
+            right++;
         }
-        return obstacleGrid[n - 1][m - 1];
+        return ans == INT_MAX ? 0 : ans;
     }
 };
+
+
+
+
+
 
 int main() {
     ios::sync_with_stdio(false);
