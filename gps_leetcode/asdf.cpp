@@ -21,24 +21,33 @@ struct ListNode {
 
 class Solution {
 public:
-    int minSubArrayLen(int target, vector<int>& nums) {
-        int n = nums.size();
-        int left = 0, right = 0;
-        int sum = 0;
-        int ans = INT_MAX;
-        while (right < n) {
-            sum += nums[right];
-            while (sum >= target) {
-                ans = min(ans, right - left + 1);
-                sum -= nums[left];
-                left++;
+    string simplifyPath(string path) {
+        stack<string> st;
+        stringstream ss(path);
+        string token;
+        while (getline(ss, token, '/')) {
+            if (token == "" || token == ".") {
+                continue;
+            } else if (token == "..") {
+                if (!st.empty()) {
+                    st.pop();
+                }
+            } else {
+                st.push(token);
             }
-            right++;
         }
-        return ans == INT_MAX ? 0 : ans;
+        if (st.empty()) {
+            return "/";
+        } else {
+            string res;
+            while (!st.empty()) {
+                res = "/" + st.top() + res;
+                st.pop();
+            }
+            return res;
+        }
     }
 };
-
 
 
 
