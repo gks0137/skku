@@ -1,0 +1,10 @@
+# Ignore everything...
+*
+
+# ...but still descend into subdirectories so matching files inside are found
+!*/
+
+# Keep only these
+!.gitignore
+!README*
+!*.py

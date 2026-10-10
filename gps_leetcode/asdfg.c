@@ -1,52 +1,107 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <limits.h>
 
-// examples of fprintf, fscanf, fputc, fgetc, fwrite, fread,
+#define MAX_SIZE 100
+
+typedef struct _Queue {
+  int front, rear;
+  int items[MAX_SIZE];
+} Queue;
+
+Queue createQueue();
+void removeQueue(Queue *queue);
+
+bool isEmpty(Queue *queue);
+bool isFull(Queue *queue);
+void enqueue(Queue *queue, int item);
+int dequeue(Queue *queue);
+int peek(Queue *queue);
+void printItems(Queue *queue);
+
+void push(Queue *queue1, Queue *queue2, int item);
+int pop(Queue *queue1, Queue *queue2);
 
 int main() {
-    
-    FILE *file = fopen("example.txt", "w");
-    if (file == NULL) {
-        perror("Error opening file");
-        return 1;
-    }
-    // examples of fprintf, fputc, fwrite
-    fprintf(file, "1Hello, World!\n2Hello, World!\n3Hello, World%.1f!\n4Hello, World!\n", 42.0);
-    fputc('A', file);
-    putc('B', file);
-    fwrite("CDEFGHIJKL", sizeof(char), 10, file);
-    fclose(file);
-    
-    
-    FILE *file_read = fopen("example.txt", "r");
-    if (file_read == NULL) {
-        perror("Error opening file for reading");
-        return 1;
-    }
-    // examples of fscanf, fgetc, fread with ferror and feof
-    char buffer[5];
-    while (fscanf(file_read, "%c%c%c%c", &buffer[0], &buffer[1], &buffer[2], &buffer[3]) == 4) {
-        buffer[4] = '\0'; // Null-terminate the string
-        printf("Read string: %s\n", buffer);
-    }
-    printf("what happened to buffer: %s\n", buffer);
-    if (ferror(file_read)) {
-        perror("Error reading from file");
-    } else if (feof(file_read)) {
-        printf("End of file reached\n");
-    }
+  Queue queue;
 
+  // Create a queue
+  queue = createQueue();
 
-    enum {
-        MONDAY = 1,
-        TUESDAY,
-        WEDNESDAY = -1,
-        THURSDAY,
-        FRIDAY,
-    } day;
+  enqueue(&queue, 1);
+  enqueue(&queue, 3);
+  enqueue(&queue, 2);
+  printItems(&queue);
 
-    day = MONDAY;
-    
+  dequeue(&queue);
+  enqueue(&queue, 4);
+  printItems(&queue);
 
+  printf("Front: %d\n", peek(&queue));
+  enqueue(&queue, 10);
+  printItems(&queue);
 
+  // Remove the queue
+  removeQueue(&queue);
+  return 0;
+}
+
+Queue createQueue() {
+  // Write your own code
+  Queue newQueue;
+  newQueue.front = newQueue.rear = -1;
+  return newQueue;
+}
+
+void removeQueue(Queue *queue) {
+  // Nothing to do
+}
+
+bool isEmpty(Queue *queue) {
+  // Write your own code
+  return queue->front == queue->rear;
+}
+
+bool isFull(Queue *queue) {
+  // Write your own code
+  return queue->rear == MAX_SIZE-1;
+}
+
+void enqueue(Queue *queue, int item) {
+  // Write your own code
+  if (isFull(queue)) {
+    printf("Error: queue is already full\n");
+    return;
+  }
+  queue->rear++;
+  queue->items[queue->rear] = item;
+}
+
+int dequeue(Queue *queue) {
+  // Write your own code
+  if (isEmpty(queue)) {
+    printf("Error: queue is empty\n");
     return 0;
+  }
+  queue->front++;
+  return = queue->items[queue->front];
+}
+
+int peek(Queue *queue) {
+  // Write your own code
+  return = queue->items[queue->front];
+}
+
+void printItems(Queue *queue) {
+  if (isEmpty(queue)) {
+    printf("Queue: empty\n");
+    return;
+  }
+
+  printf("Queue: ");
+  for (int i = queue->front; i < queue->rear; i ++) {
+    printf("%d ", queue->items[i]);
+  }
+  printf("\n");
 }
