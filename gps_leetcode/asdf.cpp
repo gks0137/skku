@@ -1,54 +1,74 @@
-#include <iostream>
-#include <string>
+#include <bits/stdc++.h>
 using namespace std;
 
-//This function convert input to secret string and prints it.
-//string target : Original input string
-//int num : indicates number of secret characters
-void printSecretStr(string target, int num){
-	for (int i = 0; i < target.size(); i++) {
-		if (i >= num && target[i] != ' ') {
-			cout << '*';
-		} else {
-			cout << target[i];
+class min_heap {
+public:
+	vector<int> heap;
+
+	min_heap() {}
+
+	void push(int val) {
+		heap.push_back(val);
+		int index = heap.size() - 1;
+		while (index > 0) {
+			int parent = (index - 1) / 2;
+			if (heap[parent] <= heap[index]) break;
+			swap(heap[parent], heap[index]);
+			index = parent;
 		}
 	}
-	cout << endl;
-}
 
-//Receive input from user
-//Receive input from user
-bool customInput(string& str, int& num){
-	num = 0;
-	char c = getchar();
-	while ('0' <= c && c <= '9') {
-		num *= 10;
-		num += c - '0';
-		c = getchar();
-	}
-	if (c != '$') {
-		cout << "Incorrect Number!" << endl;
-		return false;
-	}
-	while ((c = getchar()) != '\n') {
-		str.push_back(c);
-	}
-	if (str.size() < num) {
-		cout << "String is too short" << endl;
-		return false;
-	}
-	return true;
-}
-int main()
-{
-	//stores user input
-	string str; 
-	
-	//stores number of secrete characters
-	int num; 
+	void pop() {
+		if (heap.empty()) return;
+		swap(heap[0], heap.back());
+		heap.pop_back();
+		int index = 0;
+		while (true) {
+			int left = 2 * index + 1;
+			int right = 2 * index + 2;
+			int smallest = index;
 
-	if(customInput(str,num)){  
-		printSecretStr(str,num);
+			if (left < heap.size() && heap[left] < heap[smallest]) {
+				smallest = left;
+			}
+			if (right < heap.size() && heap[right] < heap[smallest]) {
+				smallest = right;
+			}
+			if (smallest == index) break;
+			swap(heap[index], heap[smallest]);
+			index = smallest;
+		}
 	}
-	return 0;
-}
+
+	int top() {
+		if (heap.empty()) throw runtime_error("Heap is empty");
+		return heap[0];
+	}
+
+	bool empty() {
+		return heap.empty();
+	}
+
+	void build_heap(const vector<int>& arr) {
+		// Bottom-up heap construction
+		heap = arr;
+		for (int i = (heap.size() / 2) - 1; i>= 0; --i) {
+			int index = i;
+			while (true) {
+				int left = 2 * index + 1;
+				int right = 2 * index + 2;
+				int smallest = index;
+
+				if (left < heap.size() && heap[left] < heap[smallest]) {
+					smallest = left;
+				}
+				if (right < heap.size() && heap[right] < heap[smallest]) {
+					smallest = right;
+				}
+				if (smallest == index) break;
+				swap(heap[index], heap[smallest]);
+				index = smallest;
+			}
+		}
+	}
+};
